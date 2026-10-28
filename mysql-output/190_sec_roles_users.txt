@@ -1,0 +1,137 @@
+--------------
+CREATE ROLE 'sx_admin', 'sx_analyst', 'sx_viewer'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+GRANT ALL PRIVILEGES ON sentinelx.* TO 'sx_admin'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+GRANT SELECT ON sentinelx.asset               TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+GRANT SELECT ON sentinelx.vulnerability       TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT ON sentinelx.asset_vulnerability TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT ON sentinelx.attack_type         TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT ON sentinelx.mitigation          TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT ON sentinelx.threat_actor        TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT ON sentinelx.malware             TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT ON sentinelx.attack_event        TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+GRANT SELECT ON sentinelx.event_ioc           TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT, INSERT ON sentinelx.ioc         TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+GRANT SELECT, UPDATE ON sentinelx.v_my_incidents TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT ON sentinelx.v_attack_details    TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_assign_incident TO 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT SELECT ON sentinelx.v_asset_risk        TO 'sx_viewer'
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_attack_report TO 'sx_viewer'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CREATE USER 'ananya.rao'@'localhost'  IDENTIFIED BY 'Sx#Admin2026'   DEFAULT ROLE 'sx_admin'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CREATE USER 'rahul.mehta'@'localhost' IDENTIFIED BY 'Sx#Analyst2026' DEFAULT ROLE 'sx_analyst'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CREATE USER 'divya.iyer'@'localhost'  IDENTIFIED BY 'Sx#Viewer2026'  DEFAULT ROLE 'sx_viewer'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+SELECT user, host, default_role_user AS default_role
+FROM mysql.default_roles
+WHERE user IN ('ananya.rao', 'rahul.mehta', 'divya.iyer')
+ORDER BY user
+--------------
+
++-------------+-----------+--------------+
+| user        | host      | default_role |
++-------------+-----------+--------------+
+| ananya.rao  | localhost | sx_admin     |
+| divya.iyer  | localhost | sx_viewer    |
+| rahul.mehta | localhost | sx_analyst   |
++-------------+-----------+--------------+
+3 rows in set (0.00 sec)
+
+Bye

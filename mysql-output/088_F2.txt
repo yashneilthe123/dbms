@@ -1,0 +1,24 @@
+--------------
+SELECT e.event_id, e.src_ip,
+       COALESCE(t.actor_name, 'Unattributed') AS actor,
+       COALESCE(m.malware_name, '-')          AS malware
+FROM attack_event e
+LEFT JOIN threat_actor t ON t.actor_id   = e.actor_id
+LEFT JOIN malware m      ON m.malware_id = e.malware_id
+WHERE e.event_time >= '2026-10-20'
+ORDER BY e.event_id
+--------------
+
++----------+---------------+----------------+----------------+
+| event_id | src_ip        | actor          | malware        |
++----------+---------------+----------------+----------------+
+|       25 | 192.0.2.77    | Byte Bandits   | -              |
+|       26 | 203.0.113.99  | Unattributed   | OrphanMiner    |
+|       27 | 198.51.100.88 | Ghost Parrot   | ParrotBot      |
+|       28 | 203.0.113.11  | Silent Monsoon | MonsoonStealer |
+|       29 | 198.51.100.23 | Crimson Lynx   | LynxLoader     |
+|       30 | 192.0.2.50    | Iron Kestrel   | KestrelWiper   |
++----------+---------------+----------------+----------------+
+6 rows in set (0.00 sec)
+
+Bye

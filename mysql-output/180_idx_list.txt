@@ -1,0 +1,29 @@
+--------------
+SELECT table_name, index_name,
+       GROUP_CONCAT(column_name ORDER BY seq_in_index) AS columns_in_index,
+       IF(non_unique = 0, 'yes', 'no') AS is_unique
+FROM information_schema.statistics
+WHERE table_schema = 'sentinelx'
+  AND table_name IN ('network_log', 'attack_event')
+GROUP BY table_name, index_name, non_unique
+ORDER BY table_name, index_name
+--------------
+
++--------------+--------------+------------------+-----------+
+| TABLE_NAME   | INDEX_NAME   | columns_in_index | is_unique |
++--------------+--------------+------------------+-----------+
+| attack_event | actor_id     | actor_id         | no        |
+| attack_event | asset_id     | asset_id         | no        |
+| attack_event | cve_id       | cve_id           | no        |
+| attack_event | idx_src      | src_ip           | no        |
+| attack_event | idx_time     | event_time       | no        |
+| attack_event | malware_id   | malware_id       | no        |
+| attack_event | PRIMARY      | event_id         | yes       |
+| attack_event | type_id      | type_id          | no        |
+| network_log  | dst_asset_id | dst_asset_id     | no        |
+| network_log  | idx_src_time | src_ip,log_time  | no        |
+| network_log  | PRIMARY      | log_id           | yes       |
++--------------+--------------+------------------+-----------+
+11 rows in set (0.08 sec)
+
+Bye

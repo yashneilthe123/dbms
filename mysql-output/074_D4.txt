@@ -1,0 +1,19 @@
+--------------
+SELECT cve_id, cvss
+FROM vulnerability
+WHERE cvss > ALL (SELECT v.cvss
+                  FROM asset_vulnerability av
+                  JOIN vulnerability v ON v.cve_id = av.cve_id
+                  WHERE av.asset_id IN (2, 4))
+ORDER BY cve_id
+--------------
+
++----------------+------+
+| cve_id         | cvss |
++----------------+------+
+| CVE-2021-44228 | 10.0 |
+| CVE-2024-3400  | 10.0 |
++----------------+------+
+2 rows in set (0.00 sec)
+
+Bye

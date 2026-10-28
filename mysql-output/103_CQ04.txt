@@ -1,0 +1,27 @@
+--------------
+SELECT m.family,
+       COUNT(*) AS attacks,
+       GROUP_CONCAT(DISTINCT COALESCE(t.actor_name, 'Unknown')) AS used_by,
+       ROUND(100 * COUNT(*) / (SELECT COUNT(*) FROM attack_event
+                               WHERE malware_id IS NOT NULL), 1) AS pct_of_malware_attacks
+FROM attack_event e
+JOIN malware m           ON m.malware_id = e.malware_id
+LEFT JOIN threat_actor t ON t.actor_id   = m.actor_id
+GROUP BY m.family
+ORDER BY attacks DESC, m.family
+--------------
+
++---------+---------+----------------+------------------------+
+| family  | attacks | used_by        | pct_of_malware_attacks |
++---------+---------+----------------+------------------------+
+| Botnet  |       4 | Ghost Parrot   |                   22.2 |
+| Loader  |       3 | Crimson Lynx   |                   16.7 |
+| RAT     |       3 | Silent Monsoon |                   16.7 |
+| Stealer |       3 | Silent Monsoon |                   16.7 |
+| Miner   |       2 | Unknown        |                   11.1 |
+| Wiper   |       2 | Iron Kestrel   |                   11.1 |
+| Locker  |       1 | Crimson Lynx   |                    5.6 |
++---------+---------+----------------+------------------------+
+7 rows in set (0.00 sec)
+
+Bye

@@ -1,0 +1,6 @@
+CREATE TABLE attack_type (
+  type_id          INT AUTO_INCREMENT PRIMARY KEY,
+  type_name        VARCHAR(40) NOT NULL UNIQUE,
+  mitre_technique  VARCHAR(9) NOT NULL UNIQUE CHECK (mitre_technique REGEXP '^T[0-9]{4}([.][0-9]{3})?$'),
+  base_severity    TINYINT NOT NULL CHECK (base_severity BETWEEN 1 AND 10)
+);

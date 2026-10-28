@@ -1,0 +1,23 @@
+--------------
+SELECT cve_id, cvss
+FROM vulnerability
+WHERE cvss > ANY (SELECT v.cvss
+                  FROM attack_event e
+                  JOIN vulnerability v ON v.cve_id = e.cve_id
+                  WHERE e.src_country = 'RU')
+ORDER BY cvss DESC, cve_id
+--------------
+
++----------------+------+
+| cve_id         | cvss |
++----------------+------+
+| CVE-2021-44228 | 10.0 |
+| CVE-2024-3400  | 10.0 |
+| CVE-2019-0708  |  9.8 |
+| CVE-2022-22965 |  9.8 |
+| CVE-2023-34362 |  9.8 |
+| CVE-2023-4966  |  9.4 |
++----------------+------+
+6 rows in set (0.00 sec)
+
+Bye

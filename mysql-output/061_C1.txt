@@ -1,0 +1,24 @@
+--------------
+SELECT e.event_id, e.event_time, a.hostname, t.type_name, e.severity
+FROM attack_event e
+INNER JOIN asset a       ON a.asset_id = e.asset_id
+INNER JOIN attack_type t ON t.type_id  = e.type_id
+WHERE e.severity >= 9
+ORDER BY e.event_time
+--------------
+
++----------+---------------------+----------+---------------------------+----------+
+| event_id | event_time          | hostname | type_name                 | severity |
++----------+---------------------+----------+---------------------------+----------+
+|        5 | 2026-10-04 22:10:00 | mail-01  | Exploit Public-Facing App |        9 |
+|        6 | 2026-10-05 01:00:00 | db-01    | Exploit Public-Facing App |        9 |
+|        7 | 2026-10-05 01:45:00 | db-01    | Credential Dumping        |        9 |
+|       11 | 2026-10-07 04:10:00 | web-02   | Ransomware                |       10 |
+|       15 | 2026-10-10 08:15:00 | vpn-01   | Exploit Public-Facing App |       10 |
+|       16 | 2026-10-10 08:40:00 | vpn-01   | Credential Dumping        |        9 |
+|       29 | 2026-10-25 11:11:00 | vpn-01   | Exploit Public-Facing App |        9 |
+|       30 | 2026-10-26 15:40:00 | db-01    | Ransomware                |       10 |
++----------+---------------------+----------+---------------------------+----------+
+8 rows in set (0.00 sec)
+
+Bye

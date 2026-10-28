@@ -1,0 +1,54 @@
+--------------
+ALTER TABLE network_log DROP INDEX idx_src_time
+--------------
+
+Query OK, 0 rows affected (0.06 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+
+--------------
+ANALYZE TABLE network_log
+--------------
+
++-----------------------+---------+----------+----------+
+| Table                 | Op      | Msg_type | Msg_text |
++-----------------------+---------+----------+----------+
+| sentinelx.network_log | analyze | status   | OK       |
++-----------------------+---------+----------+----------+
+1 row in set (0.01 sec)
+
+--------------
+EXPLAIN SELECT log_id, log_time, dst_asset_id
+FROM network_log
+WHERE src_ip = '198.51.100.77'
+  AND log_time >= '2026-09-15' AND log_time < '2026-10-28'
+--------------
+
+*************************** 1. row ***************************
+           id: 1
+  select_type: SIMPLE
+        table: network_log
+   partitions: NULL
+         type: ALL
+possible_keys: NULL
+          key: NULL
+      key_len: NULL
+          ref: NULL
+         rows: 50163
+     filtered: 1.11
+        Extra: Using where
+1 row in set, 1 warning (0.00 sec)
+
+--------------
+SELECT COUNT(*) AS hits FROM network_log
+WHERE src_ip = '198.51.100.77'
+  AND log_time >= '2026-09-15' AND log_time < '2026-10-28'
+--------------
+
++------+
+| hits |
++------+
+|    8 |
++------+
+1 row in set (0.01 sec)
+
+Bye

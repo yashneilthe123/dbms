@@ -1,0 +1,36 @@
+--------------
+CREATE FUNCTION fn_severity_label(p_cvss DECIMAL(3,1))
+RETURNS VARCHAR(8)
+DETERMINISTIC NO SQL
+BEGIN
+  RETURN CASE WHEN p_cvss >= 9 THEN 'CRITICAL'
+              WHEN p_cvss >= 7 THEN 'HIGH'
+              WHEN p_cvss >= 4 THEN 'MEDIUM'
+              ELSE 'LOW' END;
+END
+--------------
+
+Query OK, 0 rows affected (0.03 sec)
+
+--------------
+SELECT cve_id, cvss, fn_severity_label(cvss) AS label
+FROM vulnerability
+ORDER BY cvss DESC, cve_id
+--------------
+
++----------------+------+----------+
+| cve_id         | cvss | label    |
++----------------+------+----------+
+| CVE-2021-44228 | 10.0 | CRITICAL |
+| CVE-2024-3400  | 10.0 | CRITICAL |
+| CVE-2019-0708  |  9.8 | CRITICAL |
+| CVE-2022-22965 |  9.8 | CRITICAL |
+| CVE-2023-34362 |  9.8 | CRITICAL |
+| CVE-2023-4966  |  9.4 | CRITICAL |
+| CVE-2024-6387  |  8.1 | HIGH     |
+| CVE-2023-44487 |  7.5 | HIGH     |
+| CVE-2023-48795 |  5.9 | MEDIUM   |
++----------------+------+----------+
+9 rows in set (0.00 sec)
+
+Bye

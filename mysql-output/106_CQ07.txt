@@ -1,0 +1,24 @@
+--------------
+SELECT t.type_name, m.step_no, m.action
+FROM mitigation m
+JOIN attack_type t ON t.type_id = m.type_id
+WHERE m.type_id = (SELECT e.type_id
+                   FROM attack_event e
+                   JOIN asset a ON a.asset_id = e.asset_id
+                   WHERE a.hostname = 'web-01'
+                   GROUP BY e.type_id
+                   ORDER BY COUNT(*) DESC
+                   LIMIT 1)
+ORDER BY m.step_no
+--------------
+
++-------------+---------+-------------------------------------+
+| type_name   | step_no | action                              |
++-------------+---------+-------------------------------------+
+| Brute Force |       1 | Block the source IP at the firewall |
+| Brute Force |       2 | Lock the targeted accounts          |
+| Brute Force |       3 | Enforce MFA on the login page       |
++-------------+---------+-------------------------------------+
+3 rows in set (0.00 sec)
+
+Bye

@@ -1,0 +1,7 @@
+CREATE TABLE retro_hit (
+  run_id  INT NOT NULL,
+  log_id  BIGINT NOT NULL,
+  PRIMARY KEY (run_id, log_id),
+  FOREIGN KEY (run_id) REFERENCES retro_hunt_run(run_id) ON DELETE CASCADE,
+  FOREIGN KEY (log_id) REFERENCES network_log(log_id)
+);

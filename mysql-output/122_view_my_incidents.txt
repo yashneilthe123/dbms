@@ -1,0 +1,39 @@
+--------------
+CREATE VIEW v_my_incidents AS
+SELECT incident_id, title, priority, status, assigned_to, opened_at, closed_at
+FROM incident
+WHERE assigned_to = (SELECT analyst_id FROM analyst
+                     WHERE email = CONCAT(SUBSTRING_INDEX(USER(), '@', 1), '@sentinelx.in'))
+WITH CHECK OPTION
+--------------
+
+Query OK, 0 rows affected (0.13 sec)
+
+--------------
+SELECT USER() AS logged_in_as, COUNT(*) AS rows_visible FROM v_my_incidents
+--------------
+
++----------------+--------------+
+| logged_in_as   | rows_visible |
++----------------+--------------+
+| root@localhost |            0 |
++----------------+--------------+
+1 row in set (0.00 sec)
+
+--------------
+SELECT table_name, is_updatable
+FROM information_schema.views
+WHERE table_schema = 'sentinelx'
+ORDER BY table_name
+--------------
+
++------------------+--------------+
+| TABLE_NAME       | IS_UPDATABLE |
++------------------+--------------+
+| v_asset_risk     | NO           |
+| v_attack_details | NO           |
+| v_my_incidents   | YES          |
++------------------+--------------+
+3 rows in set (0.01 sec)
+
+Bye

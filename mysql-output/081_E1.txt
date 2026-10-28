@@ -1,0 +1,22 @@
+--------------
+SELECT src_country AS country FROM attack_event
+UNION
+SELECT origin_country FROM threat_actor WHERE origin_country IS NOT NULL
+ORDER BY country
+--------------
+
++---------+
+| country |
++---------+
+| BR      |
+| CN      |
+| IN      |
+| IR      |
+| KP      |
+| NL      |
+| RU      |
+| US      |
++---------+
+8 rows in set (0.00 sec)
+
+Bye

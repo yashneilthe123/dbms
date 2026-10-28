@@ -1,0 +1,59 @@
+--------------
+CREATE PROCEDURE sp_assign_incident(IN p_incident INT, IN p_analyst INT)
+BEGIN
+  DECLARE v_status VARCHAR(15);
+  DECLARE v_role   VARCHAR(10);
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  START TRANSACTION;
+  SELECT status INTO v_status FROM incident
+   WHERE incident_id = p_incident FOR UPDATE;
+  IF v_status IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such incident';
+  ELSEIF v_status = 'CLOSED' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Incident is already closed';
+  END IF;
+
+  SELECT role INTO v_role FROM analyst WHERE analyst_id = p_analyst;
+  IF v_role IS NULL OR v_role = 'viewer' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Only analysts or admins can own incidents';
+  END IF;
+
+  UPDATE incident
+     SET assigned_to = p_analyst,
+         status = IF(status = 'OPEN', 'INVESTIGATING', status)
+   WHERE incident_id = p_incident;
+  COMMIT;
+
+  SELECT incident_id, status, assigned_to FROM incident WHERE incident_id = p_incident;
+END
+--------------
+
+Query OK, 0 rows affected (0.05 sec)
+
+--------------
+CALL sp_assign_incident(5, 6)
+--------------
+
++-------------+---------------+-------------+
+| incident_id | status        | assigned_to |
++-------------+---------------+-------------+
+|           5 | INVESTIGATING |           6 |
++-------------+---------------+-------------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_assign_incident(1, 4)
+--------------
+
+--------------
+CALL sp_assign_incident(6, 5)
+--------------
+
+Bye

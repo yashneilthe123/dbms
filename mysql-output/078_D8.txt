@@ -1,0 +1,15 @@
+--------------
+SELECT hostname, asset_type, criticality
+FROM asset a
+WHERE NOT EXISTS (SELECT 1 FROM attack_event e
+                  WHERE e.asset_id = a.asset_id)
+--------------
+
++-----------+-------------+-------------+
+| hostname  | asset_type  | criticality |
++-----------+-------------+-------------+
+| ws-dev-01 | workstation |           2 |
++-----------+-------------+-------------+
+1 row in set (0.00 sec)
+
+Bye

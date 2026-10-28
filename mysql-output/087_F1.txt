@@ -1,0 +1,26 @@
+--------------
+SELECT cve_id, cvss,
+       CASE WHEN cvss >= 9 THEN 'CRITICAL'
+            WHEN cvss >= 7 THEN 'HIGH'
+            WHEN cvss >= 4 THEN 'MEDIUM'
+            ELSE 'LOW' END AS severity
+FROM vulnerability
+ORDER BY cvss DESC, cve_id
+--------------
+
++----------------+------+----------+
+| cve_id         | cvss | severity |
++----------------+------+----------+
+| CVE-2021-44228 | 10.0 | CRITICAL |
+| CVE-2024-3400  | 10.0 | CRITICAL |
+| CVE-2019-0708  |  9.8 | CRITICAL |
+| CVE-2022-22965 |  9.8 | CRITICAL |
+| CVE-2023-34362 |  9.8 | CRITICAL |
+| CVE-2023-4966  |  9.4 | CRITICAL |
+| CVE-2024-6387  |  8.1 | HIGH     |
+| CVE-2023-44487 |  7.5 | HIGH     |
+| CVE-2023-48795 |  5.9 | MEDIUM   |
++----------------+------+----------+
+9 rows in set (0.00 sec)
+
+Bye

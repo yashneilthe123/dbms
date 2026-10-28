@@ -1,0 +1,19 @@
+--------------
+SELECT hostname, ip_address, asset_type, criticality
+FROM asset
+WHERE criticality >= 4
+ORDER BY criticality DESC, hostname
+--------------
+
++----------+------------+------------+-------------+
+| hostname | ip_address | asset_type | criticality |
++----------+------------+------------+-------------+
+| db-01    | 10.0.2.20  | db         |           5 |
+| web-01   | 10.0.1.10  | web        |           5 |
+| dns-01   | 10.0.4.40  | dns        |           4 |
+| vpn-01   | 10.0.7.70  | vpn        |           4 |
+| web-02   | 10.0.1.11  | web        |           4 |
++----------+------------+------------+-------------+
+5 rows in set (0.00 sec)
+
+Bye

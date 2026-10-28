@@ -1,0 +1,16 @@
+--------------
+SELECT src_ip FROM attack_event
+EXCEPT
+SELECT ioc_value FROM ioc WHERE ioc_type = 'ip'
+ORDER BY src_ip
+--------------
+
++---------------+
+| src_ip        |
++---------------+
+| 203.0.113.200 |
+| 203.0.113.99  |
++---------------+
+2 rows in set (0.00 sec)
+
+Bye

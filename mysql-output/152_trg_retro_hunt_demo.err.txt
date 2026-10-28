@@ -1,0 +1,2 @@
+ERROR 1644 (45000) at line 10: An overlapping version of this indicator already exists
+ERROR 1644 (45000) at line 13: Indicator history is append-only; close it with recorded_to instead

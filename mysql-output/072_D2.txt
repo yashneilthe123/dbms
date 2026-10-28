@@ -1,0 +1,18 @@
+--------------
+SELECT full_name, email
+FROM analyst
+WHERE analyst_id = (SELECT assigned_to
+                    FROM incident
+                    WHERE assigned_to IS NOT NULL
+                    ORDER BY opened_at DESC
+                    LIMIT 1)
+--------------
+
++------------+-------------------------+
+| full_name  | email                   |
++------------+-------------------------+
+| Priya Nair | priya.nair@sentinelx.in |
++------------+-------------------------+
+1 row in set (0.00 sec)
+
+Bye

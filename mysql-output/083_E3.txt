@@ -1,0 +1,21 @@
+--------------
+SELECT src_ip FROM attack_event
+INTERSECT
+SELECT ioc_value FROM ioc WHERE ioc_type = 'ip'
+ORDER BY src_ip
+--------------
+
++---------------+
+| src_ip        |
++---------------+
+| 192.0.2.50    |
+| 192.0.2.77    |
+| 198.51.100.23 |
+| 198.51.100.45 |
+| 198.51.100.88 |
+| 203.0.113.10  |
+| 203.0.113.11  |
++---------------+
+7 rows in set (0.00 sec)
+
+Bye

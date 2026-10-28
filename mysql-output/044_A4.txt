@@ -1,0 +1,18 @@
+--------------
+SELECT hostname, asset_type, criticality
+FROM asset
+WHERE asset_type IN ('web', 'db', 'vpn')
+ORDER BY asset_type, hostname
+--------------
+
++----------+------------+-------------+
+| hostname | asset_type | criticality |
++----------+------------+-------------+
+| web-01   | web        |           5 |
+| web-02   | web        |           4 |
+| db-01    | db         |           5 |
+| vpn-01   | vpn        |           4 |
++----------+------------+-------------+
+4 rows in set (0.00 sec)
+
+Bye

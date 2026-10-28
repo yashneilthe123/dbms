@@ -1,0 +1,26 @@
+--------------
+SELECT src_ip, prev_event, event_id, gap_minutes, hostname
+FROM (SELECT e.src_ip, e.event_id, a.hostname,
+             LAG(e.event_id) OVER w AS prev_event,
+             TIMESTAMPDIFF(MINUTE, LAG(e.event_time) OVER w, e.event_time) AS gap_minutes
+      FROM attack_event e
+      JOIN asset a ON a.asset_id = e.asset_id
+      WINDOW w AS (PARTITION BY e.src_ip ORDER BY e.event_time)) AS x
+WHERE gap_minutes <= 60
+ORDER BY gap_minutes, src_ip
+--------------
+
++---------------+------------+----------+-------------+----------+
+| src_ip        | prev_event | event_id | gap_minutes | hostname |
++---------------+------------+----------+-------------+----------+
+| 203.0.113.200 |         12 |       13 |           2 | vpn-01   |
+| 198.51.100.45 |         23 |       24 |           3 | web-01   |
+| 198.51.100.88 |          8 |        9 |           5 | web-02   |
+| 198.51.100.23 |          1 |        2 |           6 | web-01   |
+| 203.0.113.11  |         15 |       16 |          25 | vpn-01   |
+| 198.51.100.45 |         10 |       11 |          37 | web-02   |
+| 192.0.2.50    |          6 |        7 |          45 | db-01    |
++---------------+------------+----------+-------------+----------+
+7 rows in set (0.00 sec)
+
+Bye

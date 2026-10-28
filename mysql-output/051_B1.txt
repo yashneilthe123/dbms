@@ -1,0 +1,22 @@
+--------------
+SELECT t.type_name, COUNT(*) AS attacks
+FROM attack_event e
+JOIN attack_type t ON t.type_id = e.type_id
+GROUP BY t.type_name
+ORDER BY attacks DESC, t.type_name
+--------------
+
++---------------------------+---------+
+| type_name                 | attacks |
++---------------------------+---------+
+| Exploit Public-Facing App |       7 |
+| Brute Force               |       6 |
+| DDoS                      |       5 |
+| Phishing                  |       4 |
+| Port Scan                 |       4 |
+| Credential Dumping        |       2 |
+| Ransomware                |       2 |
++---------------------------+---------+
+7 rows in set (0.00 sec)
+
+Bye

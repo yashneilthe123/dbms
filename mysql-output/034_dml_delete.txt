@@ -1,0 +1,35 @@
+--------------
+INSERT INTO asset (hostname, ip_address, asset_type, criticality) VALUES ('tmp-scan-01', '10.0.9.99', 'workstation', 1)
+--------------
+
+Query OK, 1 row affected (0.01 sec)
+
+--------------
+SELECT asset_id, hostname FROM asset WHERE hostname = 'tmp-scan-01'
+--------------
+
++----------+-------------+
+| asset_id | hostname    |
++----------+-------------+
+|       11 | tmp-scan-01 |
++----------+-------------+
+1 row in set (0.00 sec)
+
+--------------
+DELETE FROM asset WHERE hostname = 'tmp-scan-01'
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+
+--------------
+SELECT COUNT(*) AS assets_left FROM asset
+--------------
+
++-------------+
+| assets_left |
++-------------+
+|          10 |
++-------------+
+1 row in set (0.00 sec)
+
+Bye

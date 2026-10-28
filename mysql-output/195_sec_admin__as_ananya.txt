@@ -1,0 +1,23 @@
+--------------
+SELECT CURRENT_USER() AS logged_in_as, CURRENT_ROLE() AS active_role
+--------------
+
++----------------------+----------------+
+| logged_in_as         | active_role    |
++----------------------+----------------+
+| ananya.rao@localhost | `sx_admin`@`%` |
++----------------------+----------------+
+1 row in set (0.00 sec)
+
+--------------
+SELECT COUNT(*) AS incidents FROM incident
+--------------
+
++-----------+
+| incidents |
++-----------+
+|         9 |
++-----------+
+1 row in set (0.00 sec)
+
+Bye

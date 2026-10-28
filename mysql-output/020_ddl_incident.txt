@@ -1,0 +1,18 @@
+--------------
+CREATE TABLE incident (
+  incident_id  INT AUTO_INCREMENT PRIMARY KEY,
+  title        VARCHAR(100) NOT NULL,
+  priority     ENUM('LOW','MEDIUM','HIGH','CRITICAL') NOT NULL,
+  status       ENUM('OPEN','INVESTIGATING','CONTAINED','CLOSED') NOT NULL DEFAULT 'OPEN',
+  assigned_to  INT,
+  opened_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  closed_at    DATETIME,
+  FOREIGN KEY (assigned_to) REFERENCES analyst(analyst_id),
+  CHECK ((status = 'CLOSED') = (closed_at IS NOT NULL)),
+  CHECK (closed_at IS NULL OR closed_at >= opened_at)
+)
+--------------
+
+Query OK, 0 rows affected (0.05 sec)
+
+Bye

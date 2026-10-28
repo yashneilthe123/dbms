@@ -1,0 +1,25 @@
+--------------
+SELECT t.actor_name, m.malware_name
+FROM threat_actor t LEFT JOIN malware m ON m.actor_id = t.actor_id
+UNION
+SELECT t.actor_name, m.malware_name
+FROM threat_actor t RIGHT JOIN malware m ON m.actor_id = t.actor_id
+ORDER BY actor_name, malware_name
+--------------
+
++----------------+----------------+
+| actor_name     | malware_name   |
++----------------+----------------+
+| NULL           | OrphanMiner    |
+| Byte Bandits   | NULL           |
+| Crimson Lynx   | LynxLoader     |
+| Crimson Lynx   | LynxLocker     |
+| Ghost Parrot   | ParrotBot      |
+| Iron Kestrel   | KestrelWiper   |
+| Quiet Willow   | WillowRAT      |
+| Silent Monsoon | MonsoonRAT     |
+| Silent Monsoon | MonsoonStealer |
++----------------+----------------+
+9 rows in set (0.00 sec)
+
+Bye

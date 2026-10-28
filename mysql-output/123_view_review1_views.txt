@@ -1,0 +1,38 @@
+--------------
+CREATE VIEW v_vulnerability AS
+SELECT cve_id, cvss, published,
+       CASE WHEN cvss >= 9 THEN 'CRITICAL'
+            WHEN cvss >= 7 THEN 'HIGH'
+            WHEN cvss >= 4 THEN 'MEDIUM'
+            ELSE 'LOW' END AS severity
+FROM vulnerability
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CREATE VIEW v_retro_hunt_summary AS
+SELECT r.run_id, r.ioc_version_id, r.started_at, r.incident_id,
+       COUNT(h.log_id)                AS logs_matched,
+       COUNT(DISTINCT l.dst_asset_id) AS assets_touched
+FROM retro_hunt_run r
+LEFT JOIN retro_hit   h ON h.run_id = r.run_id
+LEFT JOIN network_log l ON l.log_id = h.log_id
+GROUP BY r.run_id, r.ioc_version_id, r.started_at, r.incident_id
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+SELECT * FROM v_retro_hunt_summary
+--------------
+
++--------+----------------+---------------------+-------------+--------------+----------------+
+| run_id | ioc_version_id | started_at          | incident_id | logs_matched | assets_touched |
++--------+----------------+---------------------+-------------+--------------+----------------+
+|      1 |              2 | 2026-10-12 08:00:00 |           4 |            4 |              2 |
+|      2 |              4 | 2026-10-20 09:00:00 |           5 |            4 |              2 |
++--------+----------------+---------------------+-------------+--------------+----------------+
+2 rows in set (0.00 sec)
+
+Bye

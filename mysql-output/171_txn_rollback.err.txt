@@ -1,0 +1,1 @@
+ERROR 1452 (23000) at line 6: Cannot add or update a child row: a foreign key constraint fails (`sentinelx`.`network_log`, CONSTRAINT `network_log_ibfk_1` FOREIGN KEY (`dst_asset_id`) REFERENCES `asset` (`asset_id`))

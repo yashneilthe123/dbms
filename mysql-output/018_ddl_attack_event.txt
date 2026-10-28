@@ -1,0 +1,27 @@
+--------------
+CREATE TABLE attack_event (
+  event_id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+  event_time          DATETIME NOT NULL,
+  src_ip              VARCHAR(45) NOT NULL,
+  src_country         CHAR(2) NOT NULL CHECK (src_country REGEXP '^[A-Z]{2}$'),
+  asset_id            INT NOT NULL,
+  type_id             INT NOT NULL,
+  actor_id            INT,
+  malware_id          INT,
+  cve_id              VARCHAR(16),
+  severity            TINYINT NOT NULL CHECK (severity BETWEEN 1 AND 10),
+  blocked             BOOLEAN NOT NULL,
+  predicted_severity  ENUM('LOW','MEDIUM','HIGH','CRITICAL'),   
+  FOREIGN KEY (asset_id) REFERENCES asset(asset_id),
+  FOREIGN KEY (type_id) REFERENCES attack_type(type_id),
+  FOREIGN KEY (actor_id) REFERENCES threat_actor(actor_id),
+  FOREIGN KEY (malware_id) REFERENCES malware(malware_id),
+  FOREIGN KEY (cve_id) REFERENCES vulnerability(cve_id),
+  INDEX idx_time (event_time),
+  INDEX idx_src (src_ip)
+)
+--------------
+
+Query OK, 0 rows affected (0.10 sec)
+
+Bye

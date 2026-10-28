@@ -1,0 +1,72 @@
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+INSERT INTO ioc (ioc_type, ioc_value, actor_id, valid_from, recorded_from)
+VALUES ('domain', 'kestrel-drop.example', 4, '2026-10-20 00:00:00', '2026-10-27 12:00:00')
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+
+--------------
+SAVEPOINT after_ioc
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+UPDATE incident SET priority = 'LOW' WHERE incident_id = 3
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+SELECT incident_id, priority FROM incident WHERE incident_id = 3
+--------------
+
++-------------+----------+
+| incident_id | priority |
++-------------+----------+
+|           3 | LOW      |
++-------------+----------+
+1 row in set (0.00 sec)
+
+--------------
+ROLLBACK TO SAVEPOINT after_ioc
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+SELECT ioc_version_id, ioc_type, ioc_value FROM ioc WHERE ioc_value = 'kestrel-drop.example'
+--------------
+
++----------------+----------+----------------------+
+| ioc_version_id | ioc_type | ioc_value            |
++----------------+----------+----------------------+
+|             14 | domain   | kestrel-drop.example |
++----------------+----------+----------------------+
+1 row in set (0.00 sec)
+
+--------------
+SELECT incident_id, priority FROM incident WHERE incident_id = 3
+--------------
+
++-------------+----------+
+| incident_id | priority |
++-------------+----------+
+|           3 | CRITICAL |
++-------------+----------+
+1 row in set (0.00 sec)
+
+Bye

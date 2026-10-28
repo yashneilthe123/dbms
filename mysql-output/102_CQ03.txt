@@ -1,0 +1,24 @@
+--------------
+SELECT a.hostname, e.event_id, e.cve_id, v.cvss, av.detected_at,
+       DATEDIFF('2026-10-28', av.detected_at) AS days_unpatched
+FROM attack_event e
+JOIN asset_vulnerability av ON av.asset_id = e.asset_id
+                           AND av.cve_id   = e.cve_id
+                           AND av.patched_at IS NULL
+JOIN vulnerability v ON v.cve_id   = e.cve_id
+JOIN asset a         ON a.asset_id = e.asset_id
+ORDER BY v.cvss DESC, a.hostname
+--------------
+
++----------+----------+----------------+------+-------------+----------------+
+| hostname | event_id | cve_id         | cvss | detected_at | days_unpatched |
++----------+----------+----------------+------+-------------+----------------+
+| vpn-01   |       15 | CVE-2024-3400  | 10.0 | 2026-09-01  |             57 |
+| web-02   |       10 | CVE-2022-22965 |  9.8 | 2026-09-05  |             53 |
+| mail-01  |        5 | CVE-2023-4966  |  9.4 | 2026-09-12  |             46 |
+| web-01   |       14 | CVE-2023-44487 |  7.5 | 2026-09-15  |             43 |
+| dns-01   |       28 | CVE-2023-48795 |  5.9 | 2026-09-20  |             38 |
++----------+----------+----------------+------+-------------+----------------+
+5 rows in set (0.00 sec)
+
+Bye

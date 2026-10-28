@@ -1,0 +1,23 @@
+--------------
+SELECT an.full_name, an.role, i.incident_id, i.status
+FROM incident i
+RIGHT JOIN analyst an ON an.analyst_id = i.assigned_to
+ORDER BY an.analyst_id, i.incident_id
+--------------
+
++-------------+---------+-------------+---------------+
+| full_name   | role    | incident_id | status        |
++-------------+---------+-------------+---------------+
+| Ananya Rao  | admin   |        NULL | NULL          |
+| Rahul Mehta | analyst |           1 | CLOSED        |
+| Rahul Mehta | analyst |           3 | CONTAINED     |
+| Rahul Mehta | analyst |           7 | INVESTIGATING |
+| Priya Nair  | analyst |           2 | CLOSED        |
+| Priya Nair  | analyst |           6 | OPEN          |
+| Karan Shah  | analyst |           4 | INVESTIGATING |
+| Divya Iyer  | viewer  |        NULL | NULL          |
+| Arjun Das   | analyst |        NULL | NULL          |
++-------------+---------+-------------+---------------+
+9 rows in set (0.00 sec)
+
+Bye

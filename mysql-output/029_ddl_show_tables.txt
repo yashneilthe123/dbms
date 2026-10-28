@@ -1,0 +1,27 @@
+--------------
+SHOW TABLES
+--------------
+
++---------------------+
+| Tables_in_sentinelx |
++---------------------+
+| analyst             |
+| asset               |
+| asset_vulnerability |
+| attack_event        |
+| attack_type         |
+| event_ioc           |
+| incident            |
+| incident_event      |
+| ioc                 |
+| malware             |
+| mitigation          |
+| network_log         |
+| retro_hit           |
+| retro_hunt_run      |
+| threat_actor        |
+| vulnerability       |
++---------------------+
+16 rows in set (0.01 sec)
+
+Bye

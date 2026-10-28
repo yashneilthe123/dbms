@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+runner/out/
+runner/steps.zip
+screenshots/
+tools/attrs.json

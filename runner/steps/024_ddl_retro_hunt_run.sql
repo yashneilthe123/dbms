@@ -1,0 +1,8 @@
+CREATE TABLE retro_hunt_run (
+  run_id          INT AUTO_INCREMENT PRIMARY KEY,
+  ioc_version_id  BIGINT NOT NULL,
+  started_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  incident_id     INT UNIQUE,                        -- at most one incident per run
+  FOREIGN KEY (ioc_version_id) REFERENCES ioc(ioc_version_id),
+  FOREIGN KEY (incident_id) REFERENCES incident(incident_id)
+);

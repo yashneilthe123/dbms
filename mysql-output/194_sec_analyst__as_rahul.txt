@@ -1,0 +1,55 @@
+--------------
+SELECT CURRENT_USER() AS logged_in_as, CURRENT_ROLE() AS active_role
+--------------
+
++-----------------------+------------------+
+| logged_in_as          | active_role      |
++-----------------------+------------------+
+| rahul.mehta@localhost | `sx_analyst`@`%` |
++-----------------------+------------------+
+1 row in set (0.00 sec)
+
+--------------
+SELECT incident_id, title, priority, status FROM v_my_incidents
+--------------
+
++-------------+------------------------------------------+----------+---------------+
+| incident_id | title                                    | priority | status        |
++-------------+------------------------------------------+----------+---------------+
+|           1 | Brute force on web-01 from 198.51.100.23 | HIGH     | CLOSED        |
+|           3 | Iron Kestrel intrusion on db-01          | CRITICAL | CONTAINED     |
+|           7 | Brute force on web-01 from 198.51.100.45 | HIGH     | INVESTIGATING |
++-------------+------------------------------------------+----------+---------------+
+3 rows in set (0.00 sec)
+
+--------------
+UPDATE v_my_incidents SET status = 'CONTAINED' WHERE incident_id = 7
+--------------
+
+Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+SELECT incident_id, status FROM v_my_incidents WHERE incident_id = 7
+--------------
+
++-------------+-----------+
+| incident_id | status    |
++-------------+-----------+
+|           7 | CONTAINED |
++-------------+-----------+
+1 row in set (0.00 sec)
+
+--------------
+UPDATE v_my_incidents SET assigned_to = 3 WHERE incident_id = 7
+--------------
+
+--------------
+SELECT * FROM incident LIMIT 1
+--------------
+
+--------------
+DROP TABLE asset
+--------------
+
+Bye

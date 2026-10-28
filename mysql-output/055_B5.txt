@@ -1,0 +1,21 @@
+--------------
+SELECT a.hostname, COUNT(*) AS serious_attacks
+FROM attack_event e
+JOIN asset a ON a.asset_id = e.asset_id
+WHERE e.severity >= 7          
+GROUP BY a.hostname
+HAVING COUNT(*) >= 2           
+ORDER BY serious_attacks DESC, a.hostname
+--------------
+
++----------+-----------------+
+| hostname | serious_attacks |
++----------+-----------------+
+| web-02   |               5 |
+| db-01    |               4 |
+| web-01   |               4 |
+| vpn-01   |               3 |
++----------+-----------------+
+4 rows in set (0.00 sec)
+
+Bye

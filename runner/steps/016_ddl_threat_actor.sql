@@ -1,0 +1,6 @@
+CREATE TABLE threat_actor (
+  actor_id        INT AUTO_INCREMENT PRIMARY KEY,
+  actor_name      VARCHAR(50) NOT NULL UNIQUE,
+  origin_country  CHAR(2) CHECK (origin_country REGEXP '^[A-Z]{2}$'),
+  motive          ENUM('financial','espionage','hacktivism','sabotage','unknown') NOT NULL
+);

@@ -1,0 +1,37 @@
+--------------
+SELECT event_id, severity, predicted_severity FROM attack_event WHERE event_id IN (25, 26)
+--------------
+
++----------+----------+--------------------+
+| event_id | severity | predicted_severity |
++----------+----------+--------------------+
+|       25 |        7 | NULL               |
+|       26 |        4 | NULL               |
++----------+----------+--------------------+
+2 rows in set (0.00 sec)
+
+--------------
+UPDATE attack_event
+   SET predicted_severity = CASE WHEN severity >= 9 THEN 'CRITICAL'
+                                 WHEN severity >= 7 THEN 'HIGH'
+                                 WHEN severity >= 4 THEN 'MEDIUM'
+                                 ELSE 'LOW' END
+ WHERE event_id IN (25, 26)
+--------------
+
+Query OK, 2 rows affected (0.02 sec)
+Rows matched: 2  Changed: 2  Warnings: 0
+
+--------------
+SELECT event_id, severity, predicted_severity FROM attack_event WHERE event_id IN (25, 26)
+--------------
+
++----------+----------+--------------------+
+| event_id | severity | predicted_severity |
++----------+----------+--------------------+
+|       25 |        7 | HIGH               |
+|       26 |        4 | MEDIUM             |
++----------+----------+--------------------+
+2 rows in set (0.00 sec)
+
+Bye

@@ -1,0 +1,20 @@
+--------------
+SELECT src_ip, COUNT(*) AS attacks
+FROM attack_event
+GROUP BY src_ip
+HAVING COUNT(*) > 3
+ORDER BY attacks DESC, src_ip
+--------------
+
++---------------+---------+
+| src_ip        | attacks |
++---------------+---------+
+| 192.0.2.50    |       4 |
+| 198.51.100.23 |       4 |
+| 198.51.100.45 |       4 |
+| 198.51.100.88 |       4 |
+| 203.0.113.200 |       4 |
++---------------+---------+
+5 rows in set (0.00 sec)
+
+Bye

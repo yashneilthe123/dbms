@@ -1,0 +1,39 @@
+--------------
+CREATE PROCEDURE sp_attack_report(IN p_from DATE, IN p_to DATE)
+READS SQL DATA
+BEGIN
+  SELECT t.type_name,
+         COUNT(*)        AS attacks,
+         SUM(e.blocked)  AS blocked,
+         MAX(e.severity) AS worst
+  FROM attack_event e
+  JOIN attack_type t ON t.type_id = e.type_id
+  WHERE e.event_time >= p_from
+    AND e.event_time <  p_to + INTERVAL 1 DAY
+  GROUP BY t.type_name
+  ORDER BY attacks DESC, t.type_name;
+END
+--------------
+
+Query OK, 0 rows affected (0.05 sec)
+
+--------------
+CALL sp_attack_report('2026-10-01', '2026-10-15')
+--------------
+
++---------------------------+---------+---------+-------+
+| type_name                 | attacks | blocked | worst |
++---------------------------+---------+---------+-------+
+| Exploit Public-Facing App |       5 |       2 |    10 |
+| DDoS                      |       4 |       3 |     8 |
+| Brute Force               |       3 |       1 |     7 |
+| Phishing                  |       3 |       2 |     6 |
+| Port Scan                 |       3 |       3 |     3 |
+| Credential Dumping        |       2 |       0 |     9 |
+| Ransomware                |       1 |       0 |    10 |
++---------------------------+---------+---------+-------+
+7 rows in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+Bye

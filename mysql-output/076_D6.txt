@@ -1,0 +1,28 @@
+--------------
+SELECT a.hostname, e.event_id, e.severity
+FROM attack_event e
+JOIN asset a ON a.asset_id = e.asset_id
+WHERE e.severity = (SELECT MAX(e2.severity)
+                    FROM attack_event e2
+                    WHERE e2.asset_id = e.asset_id)
+ORDER BY a.hostname, e.event_id
+--------------
+
++-----------+----------+----------+
+| hostname  | event_id | severity |
++-----------+----------+----------+
+| cam-01    |       18 |        4 |
+| cam-01    |       26 |        4 |
+| db-01     |       30 |       10 |
+| dns-01    |       28 |        7 |
+| mail-01   |        5 |        9 |
+| vpn-01    |       15 |       10 |
+| web-01    |       14 |        8 |
+| web-01    |       24 |        8 |
+| web-02    |       11 |       10 |
+| ws-fin-01 |       20 |        6 |
+| ws-hr-01  |       17 |        5 |
++-----------+----------+----------+
+11 rows in set (0.00 sec)
+
+Bye

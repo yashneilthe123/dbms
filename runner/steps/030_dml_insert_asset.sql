@@ -1,0 +1,11 @@
+INSERT INTO asset (asset_id, hostname, ip_address, asset_type, criticality) VALUES
+  (1, 'web-01', '10.0.1.10', 'web', 5),
+  (2, 'web-02', '10.0.1.11', 'web', 4),
+  (3, 'db-01', '10.0.2.20', 'db', 5),
+  (4, 'mail-01', '10.0.3.30', 'mail', 3),
+  (5, 'dns-01', '10.0.4.40', 'dns', 4),
+  (6, 'ws-hr-01', '10.0.5.51', 'workstation', 2),
+  (7, 'ws-fin-01', '10.0.5.52', 'workstation', 3),
+  (8, 'cam-01', '10.0.6.60', 'iot', 1),
+  (9, 'vpn-01', '10.0.7.70', 'vpn', 4),
+  (10, 'ws-dev-01', '10.0.5.53', 'workstation', 2);

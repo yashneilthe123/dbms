@@ -1,0 +1,17 @@
+CREATE TABLE ioc (
+  ioc_version_id  BIGINT AUTO_INCREMENT PRIMARY KEY,
+  ioc_type        ENUM('ip','domain','hash','url') NOT NULL,
+  ioc_value       VARCHAR(255) NOT NULL,             -- 253 = longest domain name
+  actor_id        INT,
+  malware_id      INT,
+  valid_from      DATETIME NOT NULL,                 -- valid_period: when it was hostile
+  valid_to        DATETIME,
+  recorded_from   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,   -- recorded_period: when we knew
+  recorded_to     DATETIME,
+  FOREIGN KEY (actor_id) REFERENCES threat_actor(actor_id),
+  FOREIGN KEY (malware_id) REFERENCES malware(malware_id),
+  CHECK (ioc_type <> 'ip' OR ioc_value REGEXP '^[0-9]{1,3}([.][0-9]{1,3}){3}$'),
+  CHECK (valid_to IS NULL OR valid_to > valid_from),
+  CHECK (recorded_to IS NULL OR recorded_to > recorded_from),
+  INDEX idx_value (ioc_value)
+);

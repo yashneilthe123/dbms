@@ -1,0 +1,24 @@
+--------------
+SELECT an.full_name,
+       COUNT(i.incident_id)                          AS open_incidents,
+       COALESCE(SUM(i.priority = 'CRITICAL'), 0)     AS critical,
+       RANK() OVER (ORDER BY COUNT(i.incident_id) DESC) AS workload_rank
+FROM analyst an
+LEFT JOIN incident i ON i.assigned_to = an.analyst_id
+                    AND i.status <> 'CLOSED'
+WHERE an.role = 'analyst'
+GROUP BY an.analyst_id, an.full_name
+ORDER BY workload_rank, an.full_name
+--------------
+
++-------------+----------------+----------+---------------+
+| full_name   | open_incidents | critical | workload_rank |
++-------------+----------------+----------+---------------+
+| Rahul Mehta |              2 |        0 |             1 |
+| Karan Shah  |              1 |        1 |             2 |
+| Priya Nair  |              1 |        0 |             2 |
+| Arjun Das   |              0 |        0 |             4 |
++-------------+----------------+----------+---------------+
+4 rows in set (0.00 sec)
+
+Bye

@@ -1,0 +1,27 @@
+--------------
+SELECT a.hostname,
+       COUNT(e.event_id) AS attacks,
+       ROUND(100 * SUM(e.blocked) / NULLIF(COUNT(e.event_id), 0), 1) AS blocked_pct
+FROM asset a
+LEFT JOIN attack_event e ON e.asset_id = a.asset_id
+GROUP BY a.hostname
+ORDER BY blocked_pct DESC, a.hostname
+--------------
+
++-----------+---------+-------------+
+| hostname  | attacks | blocked_pct |
++-----------+---------+-------------+
+| ws-fin-01 |       2 |       100.0 |
+| ws-hr-01  |       1 |       100.0 |
+| web-02    |       5 |        60.0 |
+| cam-01    |       2 |        50.0 |
+| db-01     |       4 |        50.0 |
+| dns-01    |       2 |        50.0 |
+| vpn-01    |       4 |        50.0 |
+| web-01    |       7 |        42.9 |
+| mail-01   |       3 |        33.3 |
+| ws-dev-01 |       0 |        NULL |
++-----------+---------+-------------+
+10 rows in set (0.00 sec)
+
+Bye

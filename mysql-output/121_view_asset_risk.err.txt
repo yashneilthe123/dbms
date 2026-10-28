@@ -1,0 +1,1 @@
+ERROR 1288 (HY000) at line 17: The target table v_asset_risk of the UPDATE is not updatable

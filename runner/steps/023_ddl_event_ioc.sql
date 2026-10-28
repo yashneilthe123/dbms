@@ -1,0 +1,7 @@
+CREATE TABLE event_ioc (
+  event_id        BIGINT NOT NULL,
+  ioc_version_id  BIGINT NOT NULL,
+  PRIMARY KEY (event_id, ioc_version_id),
+  FOREIGN KEY (event_id) REFERENCES attack_event(event_id) ON DELETE CASCADE,
+  FOREIGN KEY (ioc_version_id) REFERENCES ioc(ioc_version_id)
+);

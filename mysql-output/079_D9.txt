@@ -1,0 +1,20 @@
+--------------
+SELECT actor_name FROM threat_actor
+WHERE actor_id NOT IN (SELECT actor_id FROM malware)
+--------------
+
+Empty set (0.00 sec)
+
+--------------
+SELECT actor_name FROM threat_actor
+WHERE actor_id NOT IN (SELECT actor_id FROM malware WHERE actor_id IS NOT NULL)
+--------------
+
++--------------+
+| actor_name   |
++--------------+
+| Byte Bandits |
++--------------+
+1 row in set (0.00 sec)
+
+Bye

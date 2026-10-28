@@ -1,0 +1,40 @@
+--------------
+CREATE VIEW v_attack_details AS
+SELECT e.event_id, e.event_time, e.src_ip, e.src_country,
+       a.hostname, t.type_name,
+       ta.actor_name, m.malware_name, e.cve_id,
+       e.severity, e.blocked
+FROM attack_event e
+JOIN asset a             ON a.asset_id   = e.asset_id
+JOIN attack_type t       ON t.type_id    = e.type_id
+LEFT JOIN threat_actor ta ON ta.actor_id  = e.actor_id
+LEFT JOIN malware m       ON m.malware_id = e.malware_id
+--------------
+
+Query OK, 0 rows affected (0.02 sec)
+
+--------------
+SELECT event_id, event_time, src_ip, type_name, actor_name, severity
+FROM v_attack_details
+WHERE hostname = 'web-01'
+ORDER BY event_time
+--------------
+
++----------+---------------------+---------------+-------------+--------------+----------+
+| event_id | event_time          | src_ip        | type_name   | actor_name   | severity |
++----------+---------------------+---------------+-------------+--------------+----------+
+|        1 | 2026-10-01 02:14:00 | 198.51.100.23 | Brute Force | Crimson Lynx |        6 |
+|        2 | 2026-10-01 02:20:00 | 198.51.100.23 | Brute Force | Crimson Lynx |        7 |
+|        3 | 2026-10-02 11:05:00 | 203.0.113.200 | Port Scan   | NULL         |        3 |
+|       14 | 2026-10-09 16:45:00 | 192.0.2.77    | DDoS        | Byte Bandits |        8 |
+|       19 | 2026-10-13 07:05:00 | 198.51.100.88 | DDoS        | Ghost Parrot |        6 |
+|       23 | 2026-10-18 02:02:00 | 198.51.100.45 | Brute Force | Crimson Lynx |        7 |
+|       24 | 2026-10-18 02:05:00 | 198.51.100.45 | Brute Force | Crimson Lynx |        8 |
++----------+---------------------+---------------+-------------+--------------+----------+
+7 rows in set (0.00 sec)
+
+--------------
+DELETE FROM v_attack_details WHERE event_id = 3
+--------------
+
+Bye

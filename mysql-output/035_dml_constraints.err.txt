@@ -1,0 +1,5 @@
+ERROR 3819 (HY000) at line 1: Check constraint 'asset_chk_1' is violated.
+ERROR 1062 (23000) at line 2: Duplicate entry 'web-01' for key 'asset.hostname'
+ERROR 1452 (23000) at line 3: Cannot add or update a child row: a foreign key constraint fails (`sentinelx`.`attack_event`, CONSTRAINT `attack_event_ibfk_2` FOREIGN KEY (`type_id`) REFERENCES `attack_type` (`type_id`))
+ERROR 1451 (23000) at line 5: Cannot delete or update a parent row: a foreign key constraint fails (`sentinelx`.`attack_event`, CONSTRAINT `attack_event_ibfk_1` FOREIGN KEY (`asset_id`) REFERENCES `asset` (`asset_id`))
+ERROR 3819 (HY000) at line 6: Check constraint 'incident_chk_1' is violated.

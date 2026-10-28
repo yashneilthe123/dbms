@@ -1,0 +1,7 @@
+CREATE TABLE incident_event (
+  incident_id  INT NOT NULL,
+  event_id     BIGINT NOT NULL,
+  PRIMARY KEY (incident_id, event_id),
+  FOREIGN KEY (incident_id) REFERENCES incident(incident_id) ON DELETE CASCADE,
+  FOREIGN KEY (event_id) REFERENCES attack_event(event_id) ON DELETE CASCADE
+);

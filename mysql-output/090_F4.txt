@@ -1,0 +1,24 @@
+--------------
+SELECT incident_id,
+       DATE_FORMAT(opened_at, '%d %b %Y %H:%i') AS opened,
+       DAYNAME(opened_at) AS opened_on,
+       TIMESTAMPDIFF(HOUR, opened_at, COALESCE(closed_at, '2026-10-28 12:00:00')) AS hours_open,
+       DATEDIFF('2026-10-28', DATE(opened_at)) AS age_days
+FROM incident
+ORDER BY incident_id
+--------------
+
++-------------+-------------------+-----------+------------+----------+
+| incident_id | opened            | opened_on | hours_open | age_days |
++-------------+-------------------+-----------+------------+----------+
+|           1 | 01 Oct 2026 02:25 | Thursday  |          7 |       27 |
+|           2 | 04 Oct 2026 22:20 | Sunday    |         43 |       24 |
+|           3 | 05 Oct 2026 01:10 | Monday    |        562 |       23 |
+|           4 | 12 Oct 2026 08:00 | Monday    |        388 |       16 |
+|           5 | 20 Oct 2026 09:00 | Tuesday   |        195 |        8 |
+|           6 | 20 Oct 2026 18:10 | Tuesday   |        185 |        8 |
+|           7 | 18 Oct 2026 02:10 | Sunday    |        249 |       10 |
++-------------+-------------------+-----------+------------+----------+
+7 rows in set (0.00 sec)
+
+Bye

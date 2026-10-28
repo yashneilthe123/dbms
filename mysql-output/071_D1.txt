@@ -1,0 +1,21 @@
+--------------
+SELECT cve_id, cvss,
+       (SELECT ROUND(AVG(cvss), 2) FROM vulnerability) AS avg_cvss
+FROM vulnerability
+WHERE cvss > (SELECT AVG(cvss) FROM vulnerability)
+ORDER BY cvss DESC, cve_id
+--------------
+
++----------------+------+----------+
+| cve_id         | cvss | avg_cvss |
++----------------+------+----------+
+| CVE-2021-44228 | 10.0 |     8.92 |
+| CVE-2024-3400  | 10.0 |     8.92 |
+| CVE-2019-0708  |  9.8 |     8.92 |
+| CVE-2022-22965 |  9.8 |     8.92 |
+| CVE-2023-34362 |  9.8 |     8.92 |
+| CVE-2023-4966  |  9.4 |     8.92 |
++----------------+------+----------+
+6 rows in set (0.00 sec)
+
+Bye
