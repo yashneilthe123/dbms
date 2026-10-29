@@ -16,8 +16,38 @@ SELECT COUNT(*) AS incidents FROM incident
 +-----------+
 | incidents |
 +-----------+
-|         9 |
+|        10 |
 +-----------+
 1 row in set (0.00 sec)
+
+--------------
+SELECT audit_id, incident_id, changed_by, old_status, new_status,
+       old_assigned_to, new_assigned_to
+FROM incident_audit
+ORDER BY audit_id
+--------------
+
++----------+-------------+-----------------------+---------------+---------------+-----------------+-----------------+
+| audit_id | incident_id | changed_by            | old_status    | new_status    | old_assigned_to | new_assigned_to |
++----------+-------------+-----------------------+---------------+---------------+-----------------+-----------------+
+|        1 |           4 | root@localhost        | INVESTIGATING | CONTAINED     |               4 |               4 |
+|        2 |           3 | root@localhost        | CONTAINED     | CONTAINED     |               2 |               2 |
+|        3 |           6 | root@localhost        | OPEN          | OPEN          |               3 |               3 |
+|        5 |           7 | rahul.mehta@localhost | INVESTIGATING | CONTAINED     |               2 |               2 |
+|        6 |           8 | rahul.mehta@localhost | OPEN          | INVESTIGATING |            NULL |               2 |
++----------+-------------+-----------------------+---------------+---------------+-----------------+-----------------+
+5 rows in set (0.00 sec)
+
+--------------
+DELETE FROM incident_audit WHERE audit_id = 1
+--------------
+
+--------------
+TRUNCATE TABLE incident_audit
+--------------
+
+--------------
+DROP TRIGGER trg_audit_no_delete
+--------------
 
 Bye

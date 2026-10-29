@@ -37,7 +37,7 @@ BEGIN
 END
 --------------
 
-Query OK, 0 rows affected (0.05 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 CALL sp_escalate_incidents()

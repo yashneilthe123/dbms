@@ -8,6 +8,6 @@ CREATE TABLE incident_event (
 )
 --------------
 
-Query OK, 0 rows affected (0.13 sec)
+Query OK, 0 rows affected (0.05 sec)
 
 Bye

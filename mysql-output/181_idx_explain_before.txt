@@ -2,7 +2,7 @@
 ALTER TABLE network_log DROP INDEX idx_src_time
 --------------
 
-Query OK, 0 rows affected (0.06 sec)
+Query OK, 0 rows affected (0.02 sec)
 Records: 0  Duplicates: 0  Warnings: 0
 
 --------------
@@ -49,6 +49,6 @@ WHERE src_ip = '198.51.100.77'
 +------+
 |    8 |
 +------+
-1 row in set (0.01 sec)
+1 row in set (0.02 sec)
 
 Bye

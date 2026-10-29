@@ -1,0 +1,75 @@
+--------------
+CREATE TRIGGER trg_incident_audit_update
+AFTER UPDATE ON incident
+FOR EACH ROW
+BEGIN
+  INSERT INTO incident_audit (incident_id, action, changed_by,
+                              old_status, new_status, old_priority, new_priority,
+                              old_assigned_to, new_assigned_to)
+  VALUES (OLD.incident_id, 'UPDATE', USER(),     
+          OLD.status, NEW.status,                
+          OLD.priority, NEW.priority,
+          OLD.assigned_to, NEW.assigned_to);
+END
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CREATE TRIGGER trg_incident_audit_delete
+AFTER DELETE ON incident
+FOR EACH ROW
+BEGIN
+  INSERT INTO incident_audit (incident_id, action, changed_by,
+                              old_status, old_priority, old_assigned_to)
+  VALUES (OLD.incident_id, 'DELETE', USER(), OLD.status, OLD.priority, OLD.assigned_to);
+END
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CREATE TRIGGER trg_audit_no_update
+BEFORE UPDATE ON incident_audit
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The audit trail is append-only';
+END
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CREATE TRIGGER trg_audit_no_delete
+BEFORE DELETE ON incident_audit
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The audit trail is append-only';
+END
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+UPDATE incident SET status = 'CONTAINED' WHERE incident_id = 4
+--------------
+
+Query OK, 1 row affected (0.01 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+SELECT audit_id, incident_id, action, changed_by, old_status, new_status FROM incident_audit
+--------------
+
++----------+-------------+--------+----------------+---------------+------------+
+| audit_id | incident_id | action | changed_by     | old_status    | new_status |
++----------+-------------+--------+----------------+---------------+------------+
+|        1 |           4 | UPDATE | root@localhost | INVESTIGATING | CONTAINED  |
++----------+-------------+--------+----------------+---------------+------------+
+1 row in set (0.00 sec)
+
+--------------
+DELETE FROM incident_audit
+--------------
+
+Bye

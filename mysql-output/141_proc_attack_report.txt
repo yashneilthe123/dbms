@@ -15,7 +15,7 @@ BEGIN
 END
 --------------
 
-Query OK, 0 rows affected (0.05 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 CALL sp_attack_report('2026-10-01', '2026-10-15')

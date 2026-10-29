@@ -37,6 +37,6 @@ UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit
 | retro_hunt_run      |         2 |
 | retro_hit           |         8 |
 +---------------------+-----------+
-16 rows in set (0.05 sec)
+16 rows in set (0.01 sec)
 
 Bye

@@ -1,0 +1,85 @@
+--------------
+CALL sp_search_incidents_unsafe('Brute')
+--------------
+
++-------------+------------------------------------------+----------+-----------+-------------+
+| incident_id | title                                    | priority | status    | assigned_to |
++-------------+------------------------------------------+----------+-----------+-------------+
+|           1 | Brute force on web-01 from 198.51.100.23 | HIGH     | CLOSED    |           2 |
+|           7 | Brute force on web-01 from 198.51.100.45 | HIGH     | CONTAINED |           2 |
++-------------+------------------------------------------+----------+-----------+-------------+
+2 rows in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_search_incidents_unsafe('%'' OR 1=1 -- ')
+--------------
+
++-------------+------------------------------------------------------+----------+---------------+-------------+
+| incident_id | title                                                | priority | status        | assigned_to |
++-------------+------------------------------------------------------+----------+---------------+-------------+
+|           1 | Brute force on web-01 from 198.51.100.23             | HIGH     | CLOSED        |           2 |
+|           2 | Citrix Bleed exploit on mail-01                      | CRITICAL | CLOSED        |           3 |
+|           3 | Iron Kestrel intrusion on db-01                      | CRITICAL | CONTAINED     |           2 |
+|           4 | Retro-hunt: 198.51.100.45 hit 2 assets 4 times       | CRITICAL | CONTAINED     |           4 |
+|           5 | Retro-hunt: 203.0.113.11 hit 2 assets 4 times        | CRITICAL | INVESTIGATING |           6 |
+|           6 | DDoS waves on web servers                            | HIGH     | OPEN          |           3 |
+|           7 | Brute force on web-01 from 198.51.100.45             | HIGH     | CONTAINED     |           2 |
+|           8 | Exploit Public-Facing App on db-01 from 203.0.113.66 | CRITICAL | INVESTIGATING |           2 |
+|           9 | Retro-hunt: 198.51.100.77 hit 3 assets 8 times       | CRITICAL | OPEN          |        NULL |
+|          10 | Retro-hunt: 172.16.7.8 hit 9 assets 24 times         | CRITICAL | OPEN          |        NULL |
++-------------+------------------------------------------------------+----------+---------------+-------------+
+10 rows in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_search_incidents_unsafe('%'' UNION SELECT analyst_id, full_name, email, role, NULL FROM analyst -- ')
+--------------
+
++-------------+------------------------------------------------------+--------------------------+---------------+-------------+
+| incident_id | title                                                | priority                 | status        | assigned_to |
++-------------+------------------------------------------------------+--------------------------+---------------+-------------+
+|           1 | Brute force on web-01 from 198.51.100.23             | HIGH                     | CLOSED        |           2 |
+|           3 | Iron Kestrel intrusion on db-01                      | CRITICAL                 | CONTAINED     |           2 |
+|           7 | Brute force on web-01 from 198.51.100.45             | HIGH                     | CONTAINED     |           2 |
+|           8 | Exploit Public-Facing App on db-01 from 203.0.113.66 | CRITICAL                 | INVESTIGATING |           2 |
+|           1 | Ananya Rao                                           | ananya.rao@sentinelx.in  | admin         |        NULL |
+|           2 | Rahul Mehta                                          | rahul.mehta@sentinelx.in | analyst       |        NULL |
+|           3 | Priya Nair                                           | priya.nair@sentinelx.in  | analyst       |        NULL |
+|           4 | Karan Shah                                           | karan.shah@sentinelx.in  | analyst       |        NULL |
+|           5 | Divya Iyer                                           | divya.iyer@sentinelx.in  | viewer        |        NULL |
+|           6 | Arjun Das                                            | arjun.das@sentinelx.in   | analyst       |        NULL |
++-------------+------------------------------------------------------+--------------------------+---------------+-------------+
+10 rows in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_search_incidents_unsafe('x''; DROP TABLE asset; -- ')
+--------------
+
+--------------
+CALL sp_search_incidents('Brute')
+--------------
+
++-------------+------------------------------------------+----------+-----------+-------------+
+| incident_id | title                                    | priority | status    | assigned_to |
++-------------+------------------------------------------+----------+-----------+-------------+
+|           1 | Brute force on web-01 from 198.51.100.23 | HIGH     | CLOSED    |           2 |
+|           7 | Brute force on web-01 from 198.51.100.45 | HIGH     | CONTAINED |           2 |
++-------------+------------------------------------------+----------+-----------+-------------+
+2 rows in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_search_incidents('%'' OR 1=1 -- ')
+--------------
+
+Empty set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+Bye

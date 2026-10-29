@@ -49,7 +49,75 @@ SELECT * FROM incident LIMIT 1
 --------------
 
 --------------
+SELECT * FROM attack_event LIMIT 1
+--------------
+
+--------------
 DROP TABLE asset
 --------------
+
+--------------
+CALL sp_whoami()
+--------------
+
++-----------------------+------------------------+
+| called_by             | running_with_rights_of |
++-----------------------+------------------------+
+| rahul.mehta@localhost | root@localhost         |
++-----------------------+------------------------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_assign_incident(7, 3)
+--------------
+
+--------------
+CALL sp_assign_incident(6, 2)
+--------------
+
+--------------
+CALL sp_assign_incident(8, 2)
+--------------
+
++-------------+---------------+-------------+
+| incident_id | status        | assigned_to |
++-------------+---------------+-------------+
+|           8 | INVESTIGATING |           2 |
++-------------+---------------+-------------+
+1 row in set (0.01 sec)
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+INSERT INTO ioc (ioc_type, ioc_value, valid_from) VALUES ('ip', '172.16.7.8', '2026-10-01')
+--------------
+
+--------------
+CALL sp_report_ioc('ip', '172.16.7.8', '2026-10-01', NULL, NULL)
+--------------
+
++----------------+----------+------------+---------------------+---------------------+
+| ioc_version_id | ioc_type | ioc_value  | valid_from          | recorded_from       |
++----------------+----------+------------+---------------------+---------------------+
+|             15 | ip       | 172.16.7.8 | 2026-10-01 00:00:00 | 2026-10-29 11:20:38 |
++----------------+----------+------------+---------------------+---------------------+
+1 row in set (0.01 sec)
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+SELECT ioc_version_id, logs_matched, assets_touched, incident_id
+FROM v_retro_hunt_summary
+WHERE ioc_version_id = (SELECT MAX(ioc_version_id) FROM v_ioc)
+--------------
+
++----------------+--------------+----------------+-------------+
+| ioc_version_id | logs_matched | assets_touched | incident_id |
++----------------+--------------+----------------+-------------+
+|             15 |           24 |              9 |          10 |
++----------------+--------------+----------------+-------------+
+1 row in set (0.00 sec)
 
 Bye

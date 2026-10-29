@@ -10,7 +10,7 @@ CREATE TABLE attack_event (
   cve_id              VARCHAR(16),
   severity            TINYINT NOT NULL CHECK (severity BETWEEN 1 AND 10),
   blocked             BOOLEAN NOT NULL,
-  predicted_severity  ENUM('LOW','MEDIUM','HIGH','CRITICAL'),   -- filled by the ML job
+  triage_priority     ENUM('LOW','MEDIUM','HIGH','CRITICAL'),   -- set by an analyst; NULL = not triaged yet
   FOREIGN KEY (asset_id) REFERENCES asset(asset_id),
   FOREIGN KEY (type_id) REFERENCES attack_type(type_id),
   FOREIGN KEY (actor_id) REFERENCES threat_actor(actor_id),

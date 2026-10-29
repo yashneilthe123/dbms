@@ -14,7 +14,7 @@ BEGIN
 END
 --------------
 
-Query OK, 0 rows affected (0.05 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 CREATE TRIGGER trg_ioc_no_delete
@@ -26,7 +26,7 @@ BEGIN
 END
 --------------
 
-Query OK, 0 rows affected (0.02 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 CREATE TRIGGER trg_ioc_retro_hunt
@@ -96,7 +96,7 @@ SHOW TRIGGERS
     END IF;
     INSERT INTO incident_event (incident_id, event_id) VALUES (v_inc, NEW.event_id);
   END IF;
-END | AFTER  | 2026-10-29 02:24:29.38 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION | root@localhost | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
+END | AFTER  | 2026-10-29 11:20:35.89 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION | root@localhost | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
 | trg_ioc_no_overlap       | INSERT | ioc          | BEGIN
   IF EXISTS (SELECT 1 FROM ioc
              WHERE ioc_type = NEW.ioc_type
@@ -106,7 +106,7 @@ END | AFTER  | 2026-10-29 02:24:29.38 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,N
     SIGNAL SQLSTATE '45000'
       SET MESSAGE_TEXT = 'An overlapping version of this indicator already exists';
   END IF;
-END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | BEFORE | 2026-10-29 02:24:30.45 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION | root@localhost | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
+END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | BEFORE | 2026-10-29 11:20:36.04 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION | root@localhost | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
 | trg_ioc_retro_hunt       | INSERT | ioc          | BEGIN
   DECLARE v_run, v_hits, v_assets INT;
   IF NEW.ioc_type = 'ip' THEN
@@ -135,11 +135,11 @@ END                                                                             
       UPDATE retro_hunt_run SET incident_id = LAST_INSERT_ID() WHERE run_id = v_run;
     END IF;
   END IF;
-END | AFTER  | 2026-10-29 02:24:30.51 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION | root@localhost | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
+END | AFTER  | 2026-10-29 11:20:36.06 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION | root@localhost | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
 | trg_ioc_no_delete        | DELETE | ioc          | BEGIN
   SIGNAL SQLSTATE '45000'
     SET MESSAGE_TEXT = 'Indicator history is append-only; close it with recorded_to instead';
-END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | BEFORE | 2026-10-29 02:24:30.50 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION | root@localhost | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
+END                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | BEFORE | 2026-10-29 11:20:36.05 | ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION | root@localhost | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
 +--------------------------+--------+--------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------+------------------------+-----------------------------------------------------------------------------------------------------------------------+----------------+----------------------+----------------------+--------------------+
 4 rows in set (0.00 sec)
 

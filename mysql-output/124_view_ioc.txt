@@ -1,0 +1,25 @@
+--------------
+CREATE VIEW v_ioc AS
+SELECT ioc_version_id, ioc_type, ioc_value, actor_id, malware_id,
+       valid_from, valid_to, recorded_from
+FROM ioc
+WHERE recorded_to IS NULL
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+SELECT ioc_type, COUNT(*) AS indicators FROM v_ioc GROUP BY ioc_type ORDER BY ioc_type
+--------------
+
++----------+------------+
+| ioc_type | indicators |
++----------+------------+
+| ip       |          8 |
+| domain   |          2 |
+| hash     |          1 |
+| url      |          1 |
++----------+------------+
+4 rows in set (0.00 sec)
+
+Bye

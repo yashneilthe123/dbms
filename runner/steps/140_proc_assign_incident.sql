@@ -2,20 +2,39 @@ DELIMITER //
 CREATE PROCEDURE sp_assign_incident(IN p_incident INT, IN p_analyst INT)
 BEGIN
   DECLARE v_status VARCHAR(15);
+  DECLARE v_owner  INT;
   DECLARE v_role   VARCHAR(10);
+  DECLARE v_caller_id   INT;
+  DECLARE v_caller_role VARCHAR(10);
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN
     ROLLBACK;
     RESIGNAL;
   END;
 
+  -- this procedure runs as its DEFINER (root), so CURRENT_USER() is root;
+  -- USER() is the account that called it. Strip the host, map it to an analyst.
+  SELECT analyst_id, role INTO v_caller_id, v_caller_role FROM analyst
+   WHERE email = CONCAT(SUBSTRING_INDEX(USER(), '@', 1), '@sentinelx.in');
+  IF v_caller_role IS NULL AND SUBSTRING_INDEX(USER(), '@', 1) <> 'root' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Caller is not a registered analyst';
+  END IF;
+
   START TRANSACTION;
-  SELECT status INTO v_status FROM incident
+  SELECT status, assigned_to INTO v_status, v_owner FROM incident
    WHERE incident_id = p_incident FOR UPDATE;
   IF v_status IS NULL THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such incident';
   ELSEIF v_status = 'CLOSED' THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Incident is already closed';
+  END IF;
+
+  -- analysts may only claim an unassigned incident (or one they own) for themselves
+  IF v_caller_role = 'analyst'
+     AND (p_analyst <> v_caller_id OR (v_owner IS NOT NULL AND v_owner <> v_caller_id)) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Analysts can only claim unassigned incidents for themselves';
+  ELSEIF v_caller_role = 'viewer' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Viewers cannot assign incidents';
   END IF;
 
   SELECT role INTO v_role FROM analyst WHERE analyst_id = p_analyst;

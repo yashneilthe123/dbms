@@ -14,6 +14,7 @@ DROP DATABASE IF EXISTS sentinelx;
 DROP USER IF EXISTS 'ananya.rao'@'localhost', 'rahul.mehta'@'localhost', 'divya.iyer'@'localhost';
 DROP ROLE IF EXISTS 'sx_admin', 'sx_analyst', 'sx_viewer';
 CREATE DATABASE sentinelx;
+USE sentinelx;
 """)
 step('001_version', "SELECT VERSION() AS mysql_version, @@sql_mode AS sql_mode;")
 
@@ -29,14 +30,12 @@ step('030_dml_insert_asset', asset_insert())
 step('031_dml_seed_data', seed_rest())
 step('032_dml_insert_noise_logs', NOISE_SQL)
 step('033_dml_update', """
-SELECT event_id, severity, predicted_severity FROM attack_event WHERE event_id IN (25, 26);
+SELECT event_id, severity, blocked, triage_priority FROM attack_event WHERE event_id IN (25, 26);
 UPDATE attack_event
-   SET predicted_severity = CASE WHEN severity >= 9 THEN 'CRITICAL'
-                                 WHEN severity >= 7 THEN 'HIGH'
-                                 WHEN severity >= 4 THEN 'MEDIUM'
-                                 ELSE 'LOW' END
+   SET triage_priority = CASE event_id WHEN 25 THEN 'MEDIUM'   -- severity 7, but blocked
+                                       WHEN 26 THEN 'LOW' END   -- severity 4, blocked
  WHERE event_id IN (25, 26);
-SELECT event_id, severity, predicted_severity FROM attack_event WHERE event_id IN (25, 26);
+SELECT event_id, severity, blocked, triage_priority FROM attack_event WHERE event_id IN (25, 26);
 """)
 step('034_dml_delete', """
 INSERT INTO asset (hostname, ip_address, asset_type, criticality) VALUES ('tmp-scan-01', '10.0.9.99', 'workstation', 1);
@@ -101,10 +100,10 @@ Q['A6'] = ("Incidents nobody owns yet (IS NULL)",
 """SELECT incident_id, title, priority, status
 FROM incident
 WHERE assigned_to IS NULL;""")
-Q['A7'] = ("Attacks the ML job has not scored yet (IS NULL)",
+Q['A7'] = ("Attacks no analyst has triaged yet (IS NULL)",
 """SELECT event_id, event_time, src_ip, severity
 FROM attack_event
-WHERE predicted_severity IS NULL
+WHERE triage_priority IS NULL
 ORDER BY event_id;""")
 
 # ---------------- B. Aggregate ----------------
@@ -181,12 +180,13 @@ UNION
 SELECT t.actor_name, m.malware_name
 FROM threat_actor t RIGHT JOIN malware m ON m.actor_id = t.actor_id
 ORDER BY actor_name, malware_name;""")
-Q['C5'] = ("SELF JOIN: pairs of malware that the ML job put in the same cluster",
-"""SELECT m1.cluster_id, m1.malware_name AS malware_1, m2.malware_name AS malware_2
+Q['C5'] = ("SELF JOIN: pairs of malware used by the same threat actor",
+"""SELECT t.actor_name, m1.malware_name AS malware_1, m2.malware_name AS malware_2
 FROM malware m1
-JOIN malware m2 ON m2.cluster_id = m1.cluster_id
-               AND m2.malware_id > m1.malware_id
-ORDER BY m1.cluster_id, malware_1;""")
+JOIN malware m2     ON m2.actor_id = m1.actor_id
+                   AND m2.malware_id > m1.malware_id
+JOIN threat_actor t ON t.actor_id = m1.actor_id
+ORDER BY t.actor_name, malware_1;""")
 Q['C6'] = ("CROSS JOIN: hardening checklist of every criticality-5 asset against every severe attack type",
 """SELECT a.hostname, t.type_name,
        (SELECT COUNT(*) FROM attack_event e
@@ -582,6 +582,16 @@ GROUP BY r.run_id, r.ioc_version_id, r.started_at, r.incident_id;
 
 SELECT * FROM v_retro_hunt_summary;
 """)
+step('124_view_ioc', """
+-- the indicator versions we currently believe (not yet superseded); analysts read IOCs only through this
+CREATE VIEW v_ioc AS
+SELECT ioc_version_id, ioc_type, ioc_value, actor_id, malware_id,
+       valid_from, valid_to, recorded_from
+FROM ioc
+WHERE recorded_to IS NULL;
+
+SELECT ioc_type, COUNT(*) AS indicators FROM v_ioc GROUP BY ioc_type ORDER BY ioc_type;
+""")
 
 # ---------------- Functions ----------------
 step('130_func_severity_label', """
@@ -629,20 +639,39 @@ DELIMITER //
 CREATE PROCEDURE sp_assign_incident(IN p_incident INT, IN p_analyst INT)
 BEGIN
   DECLARE v_status VARCHAR(15);
+  DECLARE v_owner  INT;
   DECLARE v_role   VARCHAR(10);
+  DECLARE v_caller_id   INT;
+  DECLARE v_caller_role VARCHAR(10);
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN
     ROLLBACK;
     RESIGNAL;
   END;
 
+  -- this procedure runs as its DEFINER (root), so CURRENT_USER() is root;
+  -- USER() is the account that called it. Strip the host, map it to an analyst.
+  SELECT analyst_id, role INTO v_caller_id, v_caller_role FROM analyst
+   WHERE email = CONCAT(SUBSTRING_INDEX(USER(), '@', 1), '@sentinelx.in');
+  IF v_caller_role IS NULL AND SUBSTRING_INDEX(USER(), '@', 1) <> 'root' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Caller is not a registered analyst';
+  END IF;
+
   START TRANSACTION;
-  SELECT status INTO v_status FROM incident
+  SELECT status, assigned_to INTO v_status, v_owner FROM incident
    WHERE incident_id = p_incident FOR UPDATE;
   IF v_status IS NULL THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No such incident';
   ELSEIF v_status = 'CLOSED' THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Incident is already closed';
+  END IF;
+
+  -- analysts may only claim an unassigned incident (or one they own) for themselves
+  IF v_caller_role = 'analyst'
+     AND (p_analyst <> v_caller_id OR (v_owner IS NOT NULL AND v_owner <> v_caller_id)) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Analysts can only claim unassigned incidents for themselves';
+  ELSEIF v_caller_role = 'viewer' THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Viewers cannot assign incidents';
   END IF;
 
   SELECT role INTO v_role FROM analyst WHERE analyst_id = p_analyst;
@@ -683,6 +712,28 @@ END //
 DELIMITER ;
 
 CALL sp_attack_report('2026-10-01', '2026-10-15');
+""")
+step('142_proc_report_ioc', """
+-- analysts add indicators through this procedure instead of writing to the ioc table;
+-- recorded_from is always "now", so nobody can backdate when we learned about it
+DELIMITER //
+CREATE PROCEDURE sp_report_ioc(IN p_type VARCHAR(6), IN p_value VARCHAR(255),
+                               IN p_valid_from DATETIME, IN p_actor INT, IN p_malware INT)
+BEGIN
+  INSERT INTO ioc (ioc_type, ioc_value, actor_id, malware_id, valid_from, recorded_from)
+  VALUES (p_type, p_value, p_actor, p_malware, p_valid_from, NOW());
+  SELECT ioc_version_id, ioc_type, ioc_value, valid_from, recorded_from
+  FROM ioc WHERE ioc_version_id = LAST_INSERT_ID();
+END //
+
+-- who am I, and whose rights am I using? Inside a DEFINER routine the two differ.
+CREATE PROCEDURE sp_whoami()
+BEGIN
+  SELECT USER() AS called_by, CURRENT_USER() AS running_with_rights_of;
+END //
+DELIMITER ;
+
+CALL sp_whoami();
 """)
 
 # ---------------- Triggers ----------------
@@ -808,6 +859,53 @@ VALUES ('ip', '198.51.100.77', '2026-10-01 00:00:00', '2026-10-28 11:00:00');
 
 DELETE FROM ioc WHERE ioc_value = '198.51.100.77';
 """)
+step('153_trg_audit', """
+-- every change to an incident is written to incident_audit by the database itself,
+-- so it is recorded whether it came from a view, a procedure or a direct UPDATE
+DELIMITER //
+CREATE TRIGGER trg_incident_audit_update
+AFTER UPDATE ON incident
+FOR EACH ROW
+BEGIN
+  INSERT INTO incident_audit (incident_id, action, changed_by,
+                              old_status, new_status, old_priority, new_priority,
+                              old_assigned_to, new_assigned_to)
+  VALUES (OLD.incident_id, 'UPDATE', USER(),     -- USER(), not CURRENT_USER(): inside a trigger
+          OLD.status, NEW.status,                -- CURRENT_USER() is the trigger's definer (root)
+          OLD.priority, NEW.priority,
+          OLD.assigned_to, NEW.assigned_to);
+END //
+
+CREATE TRIGGER trg_incident_audit_delete
+AFTER DELETE ON incident
+FOR EACH ROW
+BEGIN
+  INSERT INTO incident_audit (incident_id, action, changed_by,
+                              old_status, old_priority, old_assigned_to)
+  VALUES (OLD.incident_id, 'DELETE', USER(), OLD.status, OLD.priority, OLD.assigned_to);
+END //
+
+-- the trail itself is append-only
+CREATE TRIGGER trg_audit_no_update
+BEFORE UPDATE ON incident_audit
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The audit trail is append-only';
+END //
+
+CREATE TRIGGER trg_audit_no_delete
+BEFORE DELETE ON incident_audit
+FOR EACH ROW
+BEGIN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The audit trail is append-only';
+END //
+DELIMITER ;
+
+UPDATE incident SET status = 'CONTAINED' WHERE incident_id = 4;
+SELECT audit_id, incident_id, action, changed_by, old_status, new_status FROM incident_audit;
+
+DELETE FROM incident_audit;
+""")
 
 # ---------------- Cursors ----------------
 step('160_cursor_escalate', """
@@ -909,6 +1007,44 @@ ROLLBACK;
 
 SELECT COUNT(*) AS logs_after FROM network_log;
 """)
+step('172_txn_handler_rollback', """
+-- a failed statement does NOT roll back the transaction: COMMIT keeps the good row
+START TRANSACTION;
+INSERT INTO network_log (log_time, src_ip, dst_asset_id, dst_port, protocol, action)
+VALUES ('2026-10-28 09:05:00', '203.0.113.6', 1, 443, 'TCP', 'allowed');
+INSERT INTO network_log (log_time, src_ip, dst_asset_id, dst_port, protocol, action)
+VALUES ('2026-10-28 09:05:01', '203.0.113.6', 99, 443, 'TCP', 'allowed');
+COMMIT;
+SELECT COUNT(*) AS kept_after_commit FROM network_log WHERE src_ip = '203.0.113.6';
+DELETE FROM network_log WHERE src_ip = '203.0.113.6';
+
+-- the loader therefore rolls back the whole batch itself
+DELIMITER //
+CREATE PROCEDURE sp_load_log_batch(IN p_last_asset INT)
+BEGIN
+  DECLARE EXIT HANDLER FOR SQLEXCEPTION
+  BEGIN
+    ROLLBACK;
+    RESIGNAL;
+  END;
+
+  START TRANSACTION;
+  INSERT INTO network_log (log_time, src_ip, dst_asset_id, dst_port, protocol, action)
+  VALUES ('2026-10-28 09:10:00', '203.0.113.7', 1, 22, 'TCP', 'blocked'),
+         ('2026-10-28 09:10:01', '203.0.113.7', 2, 22, 'TCP', 'blocked');
+  INSERT INTO network_log (log_time, src_ip, dst_asset_id, dst_port, protocol, action)
+  VALUES ('2026-10-28 09:10:02', '203.0.113.7', p_last_asset, 22, 'TCP', 'blocked');
+  COMMIT;
+END //
+DELIMITER ;
+
+CALL sp_load_log_batch(99);
+SELECT COUNT(*) AS rows_after_failed_batch FROM network_log WHERE src_ip = '203.0.113.7';
+
+CALL sp_load_log_batch(3);
+SELECT COUNT(*) AS rows_after_good_batch FROM network_log WHERE src_ip = '203.0.113.7';
+DELETE FROM network_log WHERE src_ip = '203.0.113.7';
+""")
 
 # ---------------- Indexes ----------------
 step('180_idx_list', """
@@ -947,33 +1083,62 @@ SELECT COUNT(*) AS hits FROM network_log
 WHERE src_ip = '198.51.100.77'
   AND log_time >= '2026-09-15' AND log_time < '2026-10-28';
 """)
+step('183_idx_not_used', """
+-- leftmost prefix: idx_src_time is (src_ip, log_time), so a filter on log_time alone
+-- cannot seek it directly. Without skip scan this is a full index scan ...
+EXPLAIN SELECT /*+ NO_SKIP_SCAN(network_log) */ COUNT(*) FROM network_log
+WHERE log_time >= '2026-10-27' AND log_time < '2026-10-28'\\G
+
+-- ... MySQL 8.0.13+ instead does one range read per distinct src_ip (1,004 of them)
+EXPLAIN SELECT COUNT(*) FROM network_log
+WHERE log_time >= '2026-10-27' AND log_time < '2026-10-28'\\G
+
+-- a function on the indexed column hides it from the optimizer ...
+EXPLAIN SELECT COUNT(*) FROM network_log
+WHERE SUBSTRING_INDEX(src_ip, '.', 3) = '198.51.100'\\G
+
+-- ... the same filter written as a prefix LIKE becomes a range read
+EXPLAIN SELECT COUNT(*) FROM network_log
+WHERE src_ip LIKE '198.51.100.%'\\G
+
+-- actual time and rows, not estimates
+EXPLAIN ANALYZE SELECT log_id, log_time, dst_asset_id
+FROM network_log
+WHERE src_ip = '198.51.100.77'
+  AND log_time >= '2026-09-15' AND log_time < '2026-10-28';
+""")
 
 # ---------------- Security ----------------
 step('190_sec_roles_users', """
 CREATE ROLE 'sx_admin', 'sx_analyst', 'sx_viewer';
 
-GRANT ALL PRIVILEGES ON sentinelx.* TO 'sx_admin';
+-- the admin works with the data but cannot change the schema: no CREATE, ALTER, DROP,
+-- TRIGGER or GRANT OPTION, so no TRUNCATE (needs DROP) and no dropping the audit triggers.
+-- Schema changes stay with root, the DBA.
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE, SHOW VIEW ON sentinelx.* TO 'sx_admin';
 
-GRANT SELECT ON sentinelx.asset               TO 'sx_analyst';
-GRANT SELECT ON sentinelx.vulnerability       TO 'sx_analyst';
-GRANT SELECT ON sentinelx.asset_vulnerability TO 'sx_analyst';
-GRANT SELECT ON sentinelx.attack_type         TO 'sx_analyst';
-GRANT SELECT ON sentinelx.mitigation          TO 'sx_analyst';
-GRANT SELECT ON sentinelx.threat_actor        TO 'sx_analyst';
-GRANT SELECT ON sentinelx.malware             TO 'sx_analyst';
-GRANT SELECT ON sentinelx.attack_event        TO 'sx_analyst';
-GRANT SELECT ON sentinelx.event_ioc           TO 'sx_analyst';
-GRANT SELECT, INSERT ON sentinelx.ioc         TO 'sx_analyst';
+-- analysts reach data only through views and procedures: no base table at all
+GRANT SELECT ON sentinelx.v_attack_details     TO 'sx_analyst';
+GRANT SELECT ON sentinelx.v_asset_risk         TO 'sx_analyst';
+GRANT SELECT ON sentinelx.v_vulnerability      TO 'sx_analyst';
+GRANT SELECT ON sentinelx.v_retro_hunt_summary TO 'sx_analyst';
+GRANT SELECT ON sentinelx.v_ioc                TO 'sx_analyst';
 GRANT SELECT, UPDATE ON sentinelx.v_my_incidents TO 'sx_analyst';
-GRANT SELECT ON sentinelx.v_attack_details    TO 'sx_analyst';
 GRANT EXECUTE ON PROCEDURE sentinelx.sp_assign_incident TO 'sx_analyst';
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_attack_report   TO 'sx_analyst';
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_report_ioc      TO 'sx_analyst';
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_whoami          TO 'sx_analyst';
 
 GRANT SELECT ON sentinelx.v_asset_risk        TO 'sx_viewer';
 GRANT EXECUTE ON PROCEDURE sentinelx.sp_attack_report TO 'sx_viewer';
 
-CREATE USER 'ananya.rao'@'localhost'  IDENTIFIED BY 'Sx#Admin2026'   DEFAULT ROLE 'sx_admin';
-CREATE USER 'rahul.mehta'@'localhost' IDENTIFIED BY 'Sx#Analyst2026' DEFAULT ROLE 'sx_analyst';
-CREATE USER 'divya.iyer'@'localhost'  IDENTIFIED BY 'Sx#Viewer2026'  DEFAULT ROLE 'sx_viewer';
+-- 3 wrong passwords lock the account for 1 day (MySQL 8.0.19+)
+CREATE USER 'ananya.rao'@'localhost'  IDENTIFIED BY 'Sx#Admin2026'   DEFAULT ROLE 'sx_admin'
+  FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 1;
+CREATE USER 'rahul.mehta'@'localhost' IDENTIFIED BY 'Sx#Analyst2026' DEFAULT ROLE 'sx_analyst'
+  FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 1;
+CREATE USER 'divya.iyer'@'localhost'  IDENTIFIED BY 'Sx#Viewer2026'  DEFAULT ROLE 'sx_viewer'
+  FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 1;
 
 SELECT user, host, default_role_user AS default_role
 FROM mysql.default_roles
@@ -981,8 +1146,12 @@ WHERE user IN ('ananya.rao', 'rahul.mehta', 'divya.iyer')
 ORDER BY user;
 """)
 step('191_sec_show_grants', """
-SHOW GRANTS FOR 'sx_viewer';
+SHOW GRANTS FOR 'sx_admin';
 SHOW GRANTS FOR 'sx_analyst';
+SHOW GRANTS FOR 'sx_viewer';
+-- a user's own grants show only the role; USING expands what the role gives
+SHOW GRANTS FOR 'rahul.mehta'@'localhost';
+SHOW GRANTS FOR 'rahul.mehta'@'localhost' USING 'sx_analyst';
 SHOW GRANTS FOR 'divya.iyer'@'localhost' USING 'sx_viewer';
 """)
 step('192_sec_revoke', """
@@ -1016,11 +1185,260 @@ SELECT incident_id, status FROM v_my_incidents WHERE incident_id = 7;
 
 UPDATE v_my_incidents SET assigned_to = 3 WHERE incident_id = 7;
 SELECT * FROM incident LIMIT 1;
+SELECT * FROM attack_event LIMIT 1;
 DROP TABLE asset;
+
+-- the procedure runs as root, so it must check the caller itself
+CALL sp_whoami();
+CALL sp_assign_incident(7, 3);
+CALL sp_assign_incident(6, 2);
+CALL sp_assign_incident(8, 2);
+
+-- no direct writes to ioc; a compromised internal host is reported through the procedure,
+-- and the retro-hunt trigger searches its past traffic
+INSERT INTO ioc (ioc_type, ioc_value, valid_from) VALUES ('ip', '172.16.7.8', '2026-10-01');
+CALL sp_report_ioc('ip', '172.16.7.8', '2026-10-01', NULL, NULL);
+SELECT ioc_version_id, logs_matched, assets_touched, incident_id
+FROM v_retro_hunt_summary
+WHERE ioc_version_id = (SELECT MAX(ioc_version_id) FROM v_ioc);
 """)
 step('195_sec_admin__as_ananya', """
 SELECT CURRENT_USER() AS logged_in_as, CURRENT_ROLE() AS active_role;
 SELECT COUNT(*) AS incidents FROM incident;
+
+-- the audit trail shows who changed which incident, including rahul's changes
+-- made through the view and through the DEFINER procedure
+SELECT audit_id, incident_id, changed_by, old_status, new_status,
+       old_assigned_to, new_assigned_to
+FROM incident_audit
+ORDER BY audit_id;
+
+-- the admin cannot erase it: no DELETE (trigger), no TRUNCATE (needs DROP), no DROP TRIGGER
+DELETE FROM incident_audit WHERE audit_id = 1;
+TRUNCATE TABLE incident_audit;
+DROP TRIGGER trg_audit_no_delete;
+""")
+step('196_sec_sqli_setup', """
+-- SQL injection demo. Both procedures let an analyst search HIS incidents by title.
+-- The unsafe one pastes the text into the SQL; the safe one passes it as a parameter.
+DELIMITER //
+CREATE PROCEDURE sp_search_incidents_unsafe(IN p_text VARCHAR(100))
+BEGIN
+  DECLARE v_me INT;
+  SELECT analyst_id INTO v_me FROM analyst
+   WHERE email = CONCAT(SUBSTRING_INDEX(USER(), '@', 1), '@sentinelx.in');
+  SET @sql = CONCAT('SELECT incident_id, title, priority, status, assigned_to FROM incident ',
+                    'WHERE assigned_to = ', COALESCE(v_me, -1),
+                    ' AND title LIKE ''%', p_text, '%''');
+  PREPARE st FROM @sql;
+  EXECUTE st;
+  DEALLOCATE PREPARE st;
+END //
+
+CREATE PROCEDURE sp_search_incidents(IN p_text VARCHAR(100))
+BEGIN
+  SELECT analyst_id INTO @me FROM analyst
+   WHERE email = CONCAT(SUBSTRING_INDEX(USER(), '@', 1), '@sentinelx.in');
+  SET @text = p_text;
+  PREPARE st FROM 'SELECT incident_id, title, priority, status, assigned_to FROM incident
+                   WHERE assigned_to = ? AND title LIKE CONCAT(''%'', ?, ''%'')';
+  EXECUTE st USING @me, @text;
+  DEALLOCATE PREPARE st;
+END //
+DELIMITER ;
+
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_search_incidents_unsafe TO 'sx_analyst';
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_search_incidents        TO 'sx_analyst';
+""")
+step('197_sec_sqli__as_rahul', """
+-- normal use: rahul's own incidents with 'Brute' in the title
+CALL sp_search_incidents_unsafe('Brute');
+
+-- tautology: the WHERE clause becomes (... AND title LIKE '%%') OR 1=1, so every incident comes back,
+-- read with root's rights although rahul has no SELECT on incident
+CALL sp_search_incidents_unsafe('%'' OR 1=1 -- ');
+
+-- UNION: rows from another table he cannot read
+CALL sp_search_incidents_unsafe('%'' UNION SELECT analyst_id, full_name, email, role, NULL FROM analyst -- ');
+
+-- stacked statements are refused: PREPARE takes one statement only
+CALL sp_search_incidents_unsafe('x''; DROP TABLE asset; -- ');
+
+-- the safe procedure treats the same text as data: it only matches titles containing it
+CALL sp_search_incidents('Brute');
+CALL sp_search_incidents('%'' OR 1=1 -- ');
+""")
+step('198_sec_sqli_cleanup', """
+-- the vulnerable procedure is removed once demonstrated
+DROP PROCEDURE sp_search_incidents_unsafe;
+SHOW PROCEDURE STATUS WHERE Db = 'sentinelx' AND Name LIKE 'sp_search%';
+""")
+
+# ---------------- Tests ----------------
+step('200_tests', """
+-- two helpers; SQL SECURITY INVOKER so a test never runs with more rights than its caller
+DELIMITER //
+CREATE PROCEDURE sp_check(IN p_id VARCHAR(5), IN p_what VARCHAR(80),
+                          IN p_expected VARCHAR(40), IN p_actual VARCHAR(40))
+SQL SECURITY INVOKER
+BEGIN
+  SET @tests_pass = COALESCE(@tests_pass, 0) + (p_expected <=> p_actual);
+  SET @tests_fail = COALESCE(@tests_fail, 0) + (NOT (p_expected <=> p_actual));
+  SELECT p_id AS test, p_what AS checks, p_expected AS expected, p_actual AS actual,
+         IF(p_expected <=> p_actual, 'PASS', 'FAIL') AS result;
+END //
+
+-- runs p_sql and compares the error number it raises (0 = no error) with p_errno
+CREATE PROCEDURE sp_expect_error(IN p_id VARCHAR(5), IN p_what VARCHAR(80),
+                                 IN p_sql TEXT, IN p_errno INT)
+SQL SECURITY INVOKER
+BEGIN
+  DECLARE v_errno INT DEFAULT 0;
+  BEGIN
+    -- SQLWARNING too: strict mode raises some errors (e.g. 1265) with a warning-class SQLSTATE
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION, SQLWARNING
+      GET DIAGNOSTICS CONDITION 1 v_errno = MYSQL_ERRNO;
+    SET @sx_sql = p_sql;
+    PREPARE sx_st FROM @sx_sql;
+    EXECUTE sx_st;
+  END;
+  CALL sp_check(p_id, p_what, p_errno, v_errno);
+END //
+DELIMITER ;
+
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_check        TO 'sx_analyst', 'sx_viewer';
+GRANT EXECUTE ON PROCEDURE sentinelx.sp_expect_error TO 'sx_analyst', 'sx_viewer';
+
+SET @tests_pass = 0, @tests_fail = 0;
+
+CALL sp_check('T01', '16 tables plus incident_audit', '17',
+  (SELECT COUNT(*) FROM information_schema.tables
+    WHERE table_schema = 'sentinelx' AND table_type = 'BASE TABLE'));
+CALL sp_check('T02', 'network_log is fully loaded', '50021', (SELECT COUNT(*) FROM network_log));
+
+CALL sp_expect_error('T03', 'CHECK rejects criticality 9',
+  "INSERT INTO asset (hostname, ip_address, asset_type, criticality) VALUES ('t-03', '10.9.9.9', 'web', 9)", 3819);
+CALL sp_expect_error('T04', 'UNIQUE rejects a second web-01',
+  "INSERT INTO asset (hostname, ip_address, asset_type, criticality) VALUES ('web-01', '10.9.9.8', 'web', 3)", 1062);
+CALL sp_expect_error('T05', 'FK rejects an unknown attack type',
+  "INSERT INTO attack_event (event_time, src_ip, src_country, asset_id, type_id, severity, blocked) VALUES (NOW(), '192.0.2.1', 'US', 1, 999, 5, 1)", 1452);
+CALL sp_expect_error('T06', 'FK blocks deleting an attacked asset',
+  "DELETE FROM asset WHERE asset_id = 1", 1451);
+CALL sp_expect_error('T07', 'CHECK: CLOSED needs closed_at',
+  "UPDATE incident SET status = 'CLOSED' WHERE incident_id = 6", 3819);
+CALL sp_expect_error('T08', 'ENUM rejects priority URGENT (strict mode)',
+  "UPDATE incident SET priority = 'URGENT' WHERE incident_id = 6", 1265);
+
+START TRANSACTION;
+DELETE FROM incident WHERE incident_id = 2;
+CALL sp_check('T09', 'ON DELETE CASCADE clears incident_event', '0',
+  (SELECT COUNT(*) FROM incident_event WHERE incident_id = 2));
+ROLLBACK;
+
+CALL sp_expect_error('T10', 'aggregated view is not updatable',
+  "UPDATE v_asset_risk SET criticality = 5 WHERE asset_id = 2", 1288);
+
+START TRANSACTION;
+SET @n = (SELECT COUNT(*) FROM incident);
+INSERT INTO attack_event (event_time, src_ip, src_country, asset_id, type_id, severity, blocked)
+VALUES ('2026-11-01 10:00:00', '192.0.2.10', 'US', 4, 1, 9, 0);
+CALL sp_check('T11', 'severity 9 attack opens an incident', @n + 1, (SELECT COUNT(*) FROM incident));
+INSERT INTO attack_event (event_time, src_ip, src_country, asset_id, type_id, severity, blocked)
+VALUES ('2026-11-01 10:10:00', '192.0.2.10', 'US', 4, 1, 8, 0);
+CALL sp_check('T12', 'repeat within 1 hour joins that incident', @n + 1, (SELECT COUNT(*) FROM incident));
+ROLLBACK;
+
+CALL sp_check('T13', 'retro-hunt found 8 old logs for 198.51.100.77', '8',
+  (SELECT logs_matched FROM v_retro_hunt_summary
+    WHERE ioc_version_id = (SELECT MIN(ioc_version_id) FROM ioc WHERE ioc_value = '198.51.100.77')));
+CALL sp_expect_error('T14', 'overlapping IOC version is rejected',
+  "INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from) VALUES ('ip', '198.51.100.77', '2026-10-01', '2026-10-28 11:00:00')", 1644);
+CALL sp_expect_error('T15', 'IOC history is append-only',
+  "DELETE FROM ioc WHERE ioc_value = '198.51.100.77'", 1644);
+CALL sp_check('T16', 'fn_severity_label(9.8), (6.5)', 'CRITICAL/MEDIUM',
+  CONCAT(fn_severity_label(9.8), '/', fn_severity_label(6.5)));
+CALL sp_expect_error('T17', 'cannot assign a closed incident',
+  "CALL sp_assign_incident(1, 4)", 1644);
+CALL sp_expect_error('T18', 'cannot assign an incident to a viewer',
+  "CALL sp_assign_incident(6, 5)", 1644);
+CALL sp_expect_error('T19', 'bad log batch raises the FK error',
+  "CALL sp_load_log_batch(99)", 1452);
+CALL sp_check('T20', '... and leaves none of its rows behind', '0',
+  (SELECT COUNT(*) FROM network_log WHERE src_ip = '203.0.113.7'));
+CALL sp_check('T21', 'savepoint kept the IOC, undid the priority change', '1/CRITICAL',
+  CONCAT((SELECT COUNT(*) FROM ioc WHERE ioc_value = 'kestrel-drop.example'), '/',
+         (SELECT priority FROM incident WHERE incident_id = 3)));
+CALL sp_check('T22', 'NOT IN over a NULL returns nothing', '0',
+  (SELECT COUNT(*) FROM threat_actor WHERE actor_id NOT IN (SELECT actor_id FROM malware)));
+CALL sp_check('T23', "audit trail names rahul for his claim of incident 8", 'rahul.mehta',
+  (SELECT SUBSTRING_INDEX(changed_by, '@', 1) FROM incident_audit
+    WHERE incident_id = 8 AND new_assigned_to = 2));
+CALL sp_expect_error('T24', 'audit trail is append-only (DELETE)',
+  "DELETE FROM incident_audit WHERE audit_id = 1", 1644);
+CALL sp_expect_error('T25', 'audit trail is append-only (UPDATE)',
+  "UPDATE incident_audit SET changed_by = 'nobody' WHERE audit_id = 1", 1644);
+CALL sp_check('T26', 'injectable procedure was removed', '0',
+  (SELECT COUNT(*) FROM information_schema.routines
+    WHERE routine_schema = 'sentinelx' AND routine_name = 'sp_search_incidents_unsafe'));
+CALL sp_check('T27', 'admin role has no CREATE/ALTER/DROP/TRIGGER', '0',
+  (SELECT COUNT(*) FROM information_schema.schema_privileges
+    WHERE grantee = "'sx_admin'@'%'" AND privilege_type IN ('CREATE', 'ALTER', 'DROP', 'TRIGGER')));
+
+SELECT @tests_pass AS passed, @tests_fail AS failed;
+""")
+step('201_tests__as_rahul', """
+SET @tests_pass = 0, @tests_fail = 0;
+CALL sp_expect_error('S01', 'analyst cannot read a base table',
+  "DO (SELECT COUNT(*) FROM attack_event)", 1142);
+CALL sp_expect_error('S02', 'analyst can read through the view',
+  "DO (SELECT COUNT(*) FROM v_attack_details)", 0);
+CALL sp_expect_error('S03', 'analyst cannot run DDL',
+  "DROP TABLE asset", 1142);
+CALL sp_check('S04', 'v_my_incidents shows only his own rows', '0',
+  (SELECT COUNT(*) FROM v_my_incidents WHERE assigned_to <> 2));
+CALL sp_expect_error('S05', 'WITH CHECK OPTION blocks handing an incident over',
+  "UPDATE v_my_incidents SET assigned_to = 3 WHERE incident_id = 7", 1369);
+CALL sp_expect_error('S06', 'procedure blocks giving his incident away',
+  "CALL sp_assign_incident(7, 3)", 1644);
+CALL sp_expect_error('S07', "procedure blocks taking a colleague's incident",
+  "CALL sp_assign_incident(6, 2)", 1644);
+CALL sp_expect_error('S08', 'procedure lets him claim an unassigned incident',
+  "CALL sp_assign_incident(9, 2)", 0);
+CALL sp_expect_error('S09', 'analyst cannot write the ioc table directly',
+  "INSERT INTO ioc (ioc_type, ioc_value, valid_from) VALUES ('ip', '192.0.2.200', '2026-10-01')", 1142);
+CALL sp_expect_error('S10', 'analyst reports an IOC through the procedure',
+  "CALL sp_report_ioc('ip', '192.0.2.200', '2026-10-01', NULL, NULL)", 0);
+CALL sp_expect_error('S11', 'analyst cannot read the audit trail',
+  "DO (SELECT COUNT(*) FROM incident_audit)", 1142);
+SELECT @tests_pass AS passed, @tests_fail AS failed;
+""")
+step('202_tests__as_divya', """
+SET @tests_pass = 0, @tests_fail = 0;
+CALL sp_expect_error('V01', 'viewer can read the risk view',
+  "DO (SELECT COUNT(*) FROM v_asset_risk)", 0);
+CALL sp_expect_error('V02', 'viewer cannot read a base table',
+  "DO (SELECT COUNT(*) FROM attack_event)", 1142);
+CALL sp_expect_error('V03', 'viewer cannot delete',
+  "DELETE FROM attack_event WHERE event_id = 1", 1142);
+CALL sp_expect_error('V04', 'viewer cannot run the assign procedure',
+  "CALL sp_assign_incident(9, 5)", 1370);
+CALL sp_expect_error('V05', 'viewer cannot update the risk view',
+  "UPDATE v_asset_risk SET criticality = 1 WHERE asset_id = 1", 1142);
+SELECT @tests_pass AS passed, @tests_fail AS failed;
+""")
+step('203_tests__as_ananya', """
+SET @tests_pass = 0, @tests_fail = 0;
+CALL sp_expect_error('A01', 'admin can change incident data',
+  "UPDATE incident SET priority = 'HIGH' WHERE incident_id = 9", 0);
+CALL sp_check('A02', '... and the audit trail names the admin', 'ananya.rao',
+  (SELECT SUBSTRING_INDEX(changed_by, '@', 1) FROM incident_audit ORDER BY audit_id DESC LIMIT 1));
+CALL sp_expect_error('A03', 'admin cannot delete audit rows',
+  "DELETE FROM incident_audit WHERE audit_id = 1", 1644);
+CALL sp_expect_error('A04', 'admin cannot TRUNCATE the audit trail',
+  "TRUNCATE TABLE incident_audit", 1142);
+CALL sp_expect_error('A05', 'admin cannot change the schema',
+  "ALTER TABLE incident ADD COLUMN note VARCHAR(10)", 1142);
+SELECT @tests_pass AS passed, @tests_fail AS failed;
 """)
 
 if __name__ == '__main__':

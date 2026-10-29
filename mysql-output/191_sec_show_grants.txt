@@ -1,4 +1,37 @@
 --------------
+SHOW GRANTS FOR 'sx_admin'
+--------------
+
++---------------------------------------------------------------------------------------------+
+| Grants for sx_admin@%                                                                       |
++---------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `sx_admin`@`%`                                                        |
+| GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE, SHOW VIEW ON `sentinelx`.* TO `sx_admin`@`%` |
++---------------------------------------------------------------------------------------------+
+2 rows in set (0.00 sec)
+
+--------------
+SHOW GRANTS FOR 'sx_analyst'
+--------------
+
++---------------------------------------------------------------------------------+
+| Grants for sx_analyst@%                                                         |
++---------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `sx_analyst`@`%`                                          |
+| GRANT SELECT ON `sentinelx`.`v_asset_risk` TO `sx_analyst`@`%`                  |
+| GRANT SELECT ON `sentinelx`.`v_attack_details` TO `sx_analyst`@`%`              |
+| GRANT SELECT ON `sentinelx`.`v_ioc` TO `sx_analyst`@`%`                         |
+| GRANT SELECT, UPDATE ON `sentinelx`.`v_my_incidents` TO `sx_analyst`@`%`        |
+| GRANT SELECT ON `sentinelx`.`v_retro_hunt_summary` TO `sx_analyst`@`%`          |
+| GRANT SELECT ON `sentinelx`.`v_vulnerability` TO `sx_analyst`@`%`               |
+| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_assign_incident` TO `sx_analyst`@`%` |
+| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_attack_report` TO `sx_analyst`@`%`   |
+| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_report_ioc` TO `sx_analyst`@`%`      |
+| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_whoami` TO `sx_analyst`@`%`          |
++---------------------------------------------------------------------------------+
+11 rows in set (0.00 sec)
+
+--------------
 SHOW GRANTS FOR 'sx_viewer'
 --------------
 
@@ -12,28 +45,38 @@ SHOW GRANTS FOR 'sx_viewer'
 3 rows in set (0.00 sec)
 
 --------------
-SHOW GRANTS FOR 'sx_analyst'
+SHOW GRANTS FOR 'rahul.mehta'@'localhost'
 --------------
 
-+---------------------------------------------------------------------------------+
-| Grants for sx_analyst@%                                                         |
-+---------------------------------------------------------------------------------+
-| GRANT USAGE ON *.* TO `sx_analyst`@`%`                                          |
-| GRANT SELECT ON `sentinelx`.`asset_vulnerability` TO `sx_analyst`@`%`           |
-| GRANT SELECT ON `sentinelx`.`asset` TO `sx_analyst`@`%`                         |
-| GRANT SELECT ON `sentinelx`.`attack_event` TO `sx_analyst`@`%`                  |
-| GRANT SELECT ON `sentinelx`.`attack_type` TO `sx_analyst`@`%`                   |
-| GRANT SELECT ON `sentinelx`.`event_ioc` TO `sx_analyst`@`%`                     |
-| GRANT SELECT, INSERT ON `sentinelx`.`ioc` TO `sx_analyst`@`%`                   |
-| GRANT SELECT ON `sentinelx`.`malware` TO `sx_analyst`@`%`                       |
-| GRANT SELECT ON `sentinelx`.`mitigation` TO `sx_analyst`@`%`                    |
-| GRANT SELECT ON `sentinelx`.`threat_actor` TO `sx_analyst`@`%`                  |
-| GRANT SELECT ON `sentinelx`.`v_attack_details` TO `sx_analyst`@`%`              |
-| GRANT SELECT, UPDATE ON `sentinelx`.`v_my_incidents` TO `sx_analyst`@`%`        |
-| GRANT SELECT ON `sentinelx`.`vulnerability` TO `sx_analyst`@`%`                 |
-| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_assign_incident` TO `sx_analyst`@`%` |
-+---------------------------------------------------------------------------------+
-14 rows in set (0.00 sec)
++-----------------------------------------------------+
+| Grants for rahul.mehta@localhost                    |
++-----------------------------------------------------+
+| GRANT USAGE ON *.* TO `rahul.mehta`@`localhost`     |
+| GRANT `sx_analyst`@`%` TO `rahul.mehta`@`localhost` |
++-----------------------------------------------------+
+2 rows in set (0.00 sec)
+
+--------------
+SHOW GRANTS FOR 'rahul.mehta'@'localhost' USING 'sx_analyst'
+--------------
+
++------------------------------------------------------------------------------------------+
+| Grants for rahul.mehta@localhost                                                         |
++------------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `rahul.mehta`@`localhost`                                          |
+| GRANT SELECT ON `sentinelx`.`v_asset_risk` TO `rahul.mehta`@`localhost`                  |
+| GRANT SELECT ON `sentinelx`.`v_attack_details` TO `rahul.mehta`@`localhost`              |
+| GRANT SELECT ON `sentinelx`.`v_ioc` TO `rahul.mehta`@`localhost`                         |
+| GRANT SELECT, UPDATE ON `sentinelx`.`v_my_incidents` TO `rahul.mehta`@`localhost`        |
+| GRANT SELECT ON `sentinelx`.`v_retro_hunt_summary` TO `rahul.mehta`@`localhost`          |
+| GRANT SELECT ON `sentinelx`.`v_vulnerability` TO `rahul.mehta`@`localhost`               |
+| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_assign_incident` TO `rahul.mehta`@`localhost` |
+| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_attack_report` TO `rahul.mehta`@`localhost`   |
+| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_report_ioc` TO `rahul.mehta`@`localhost`      |
+| GRANT EXECUTE ON PROCEDURE `sentinelx`.`sp_whoami` TO `rahul.mehta`@`localhost`          |
+| GRANT `sx_analyst`@`%` TO `rahul.mehta`@`localhost`                                      |
++------------------------------------------------------------------------------------------+
+12 rows in set (0.00 sec)
 
 --------------
 SHOW GRANTS FOR 'divya.iyer'@'localhost' USING 'sx_viewer'

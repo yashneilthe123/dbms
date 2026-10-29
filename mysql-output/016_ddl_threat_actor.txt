@@ -7,6 +7,6 @@ CREATE TABLE threat_actor (
 )
 --------------
 
-Query OK, 0 rows affected (0.06 sec)
+Query OK, 0 rows affected (0.04 sec)
 
 Bye

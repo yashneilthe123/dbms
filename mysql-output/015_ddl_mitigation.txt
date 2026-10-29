@@ -8,6 +8,6 @@ CREATE TABLE mitigation (
 )
 --------------
 
-Query OK, 0 rows affected (0.06 sec)
+Query OK, 0 rows affected (0.03 sec)
 
 Bye

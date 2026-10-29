@@ -1,0 +1,88 @@
+--------------
+SET @tests_pass = 0, @tests_fail = 0
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('A01', 'admin can change incident data',
+  "UPDATE incident SET priority = 'HIGH' WHERE incident_id = 9", 0)
+--------------
+
++------+--------------------------------+----------+--------+--------+
+| test | checks                         | expected | actual | result |
++------+--------------------------------+----------+--------+--------+
+| A01  | admin can change incident data | 0        | 0      | PASS   |
++------+--------------------------------+----------+--------+--------+
+1 row in set (0.01 sec)
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CALL sp_check('A02', '... and the audit trail names the admin', 'ananya.rao',
+  (SELECT SUBSTRING_INDEX(changed_by, '@', 1) FROM incident_audit ORDER BY audit_id DESC LIMIT 1))
+--------------
+
++------+-----------------------------------------+------------+------------+--------+
+| test | checks                                  | expected   | actual     | result |
++------+-----------------------------------------+------------+------------+--------+
+| A02  | ... and the audit trail names the admin | ananya.rao | ananya.rao | PASS   |
++------+-----------------------------------------+------------+------------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('A03', 'admin cannot delete audit rows',
+  "DELETE FROM incident_audit WHERE audit_id = 1", 1644)
+--------------
+
++------+--------------------------------+----------+--------+--------+
+| test | checks                         | expected | actual | result |
++------+--------------------------------+----------+--------+--------+
+| A03  | admin cannot delete audit rows | 1644     | 1644   | PASS   |
++------+--------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('A04', 'admin cannot TRUNCATE the audit trail',
+  "TRUNCATE TABLE incident_audit", 1142)
+--------------
+
++------+---------------------------------------+----------+--------+--------+
+| test | checks                                | expected | actual | result |
++------+---------------------------------------+----------+--------+--------+
+| A04  | admin cannot TRUNCATE the audit trail | 1142     | 1142   | PASS   |
++------+---------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('A05', 'admin cannot change the schema',
+  "ALTER TABLE incident ADD COLUMN note VARCHAR(10)", 1142)
+--------------
+
++------+--------------------------------+----------+--------+--------+
+| test | checks                         | expected | actual | result |
++------+--------------------------------+----------+--------+--------+
+| A05  | admin cannot change the schema | 1142     | 1142   | PASS   |
++------+--------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT @tests_pass AS passed, @tests_fail AS failed
+--------------
+
++--------+--------+
+| passed | failed |
++--------+--------+
+|      5 |      0 |
++--------+--------+
+1 row in set (0.00 sec)
+
+Bye

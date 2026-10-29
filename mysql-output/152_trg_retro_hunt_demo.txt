@@ -3,7 +3,7 @@ INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from)
 VALUES ('ip', '198.51.100.77', '2026-09-15 00:00:00', '2026-10-28 10:00:00')
 --------------
 
-Query OK, 1 row affected (0.02 sec)
+Query OK, 1 row affected (0.01 sec)
 
 --------------
 SELECT * FROM v_retro_hunt_summary WHERE ioc_version_id = LAST_INSERT_ID()
