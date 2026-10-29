@@ -337,6 +337,8 @@ cq_tables = [i for i, e in enumerate(R2) if e['t'] == 'tbl' and e['rows'] and le
 for i, (cid, (question, sql)) in zip(cq_tables, gen_steps.CQ.items()):
     rows = {r[0]: r[1] for r in ROWS(i)[1:]}
     n_next = len(figs) + 1
+    if cid != 'CQ-01':
+        add(t='pagebreak')
     p([{'text': cid, 'b': True}], keepNext=True)
     table(['Field', 'Content'], [
         ['ID', cid], ['Business question', question],
@@ -679,7 +681,7 @@ crows.append(['27', 'Relational schema diagram redrawn from the DDL (tools/draw_
 table(['#', 'Change', 'Reason'], crows, [500, 3300, 5560])
 
 # ================================================================= 18 checklist
-h1('18. Review 3 Requirements Checklist')
+h1('18. Review 3 Requirements Checklist', new_page=False)
 table(['Requirement', 'Evidence', 'Where', 'Status'], [
     ['Complete database with all tables populated', '17 tables, 50,021 log lines, 30 attacks, row counts', '9, 10', 'Done'],
     ['Full scripts, re-runnable from scratch', '01_ddl.sql to 13_tests.sql run cleanly on an empty server; one-click runner; fixed ERROR 1046', '10, 17', 'Done'],
@@ -712,7 +714,7 @@ table(['Time', 'Step', 'What is shown', 'File'], [
 ], [700, 2000, 4360, 2300])
 
 # ================================================================= 20-23
-h1('20. Limitations and Future Scope')
+h1('20. Limitations and Future Scope', new_page=False)
 lim = md.split('## 1.3 Limitations (replaces Review 2 section 17)')[1].split('# 2.')[0]
 bullets([re.sub(r'`([^`]*)`', r'\1', l[2:].strip()) for l in lim.split('\n') if l.startswith('- ')] + [
     'Future: run the procedures under a dedicated low-privilege definer account instead of root, so that a mistake '

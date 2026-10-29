@@ -144,7 +144,6 @@ for (const b of spec.blocks) {
 const doc = new Document({
   creator: spec.author || '',
   title: spec.title || '',
-  features: { updateFields: true },
   styles: {
     default: { document: { run: { font: FONT, size: 22, color: '000000' } } },
     paragraphStyles: [
