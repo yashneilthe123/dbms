@@ -112,8 +112,8 @@ def code(text): add(t='code', text=text.strip('\n'))
 def table(header, rows, cols, **kw): add(t='table', header=header, rows=rows, cols=cols, **kw)
 
 
-def size(wpx, hpx, max_w=6.5, max_h=8.2):
-    w = min(max_w, wpx / 210.0)
+def size(wpx, hpx, max_w=6.5, max_h=6.0):
+    w = min(max_w, wpx / 265.0)
     h = hpx * w / wpx
     if h > max_h:
         w, h = w * max_h / h, max_h
@@ -301,6 +301,8 @@ fig(os.path.join(ROOT, 'diagrams', 'relational_schema.png'), 'Relational schema 
 h1('9. Tables and Constraints')
 p(T(85).replace('All 16 tables', 'All 16 tables, and the audit table added in Review 3,')
   .replace('Every column that decides another column is itself a candidate key, so the tables also meet BCNF. ', '')
+  .replace('its attributes with data types and constraints, the CREATE TABLE statement',
+           'the CREATE TABLE statement with every data type and constraint')
   .replace('The normalisation steps and the 23 attributes removed after review are in section 15.',
            'The normalisation steps are in section 9.1; the 23 attributes removed after Review 1 are listed in '
            'section 15 of the Review 2 report.'))
@@ -345,7 +347,6 @@ order = [re.sub(r'^\d{3}_ddl_', '', n) for n in sorted(META) if re.match(r'0[12]
 for tname in order:
     h3('Table: ' + tname)
     p(new_desc.get(tname) or T(desc[tname][0]))
-    table(['Attribute', 'Data Type', 'Constraint'], ATTRS[tname], [2300, 2200, 4860])
     num = [n for n in META if n.endswith('_ddl_' + tname)][0]
     step_fig(num, f'CREATE TABLE {tname} executed in MySQL')
     p([{'text': new_nf.get(tname) or T(desc[tname][1]), 'b': True}])
@@ -403,8 +404,6 @@ cq_tables = [i for i, e in enumerate(R2) if e['t'] == 'tbl' and e['rows'] and le
 for i, (cid, (question, sql)) in zip(cq_tables, gen_steps.CQ.items()):
     rows = {r[0]: r[1] for r in ROWS(i)[1:]}
     n_next = len(figs) + 1
-    if cid != 'CQ-01':
-        add(t='pagebreak')
     p([{'text': cid, 'b': True}], keepNext=True)
     table(['Field', 'Content'], [
         ['ID', cid], ['Business question', question],
@@ -413,7 +412,7 @@ for i, (cid, (question, sql)) in zip(cq_tables, gen_steps.CQ.items()):
         ['Actual output screenshot', f'Below (Fig. {n_next})'],
         ['Matches the prediction', cq_match(cid)],
         ['Explanation', rows['Explanation']],
-    ], [2000, 7360])
+    ], [2000, 7360], cantSplit=True)
     step_fig('%03d_%s' % (99 + int(cid[3:]), cid.replace('-', '')), f'{cid} actual output')
 
 h2('12.2 Views')
@@ -637,7 +636,7 @@ p('Defences, in order of importance: never build SQL from user text (use paramet
   'the rights it needs (an INVOKER procedure, or a low-privilege definer instead of root); validate input. GRANT '
   'cannot help, because the injected SQL runs with whatever rights the vulnerable code has. Here that was root, so '
   'the same hole could have read any table on the server, including the password hashes in mysql.user; a definer '
-  'account limited to this database would have contained it (section 20).')
+  'account limited to this database would have contained it (section 19).')
 
 # ================================================================= 13 transactions + concurrency
 h1('13. Transactions and Concurrency')
@@ -824,19 +823,13 @@ for step, user in user_of.items():
     s = re.findall(r'^\|\s+(\d+) \|\s+(\d+) \|$', txt, re.M)[-1]
     summary.append([user, s[0], s[1]])
 rows.sort(key=lambda r: ('TSVA'.index(r[0][0]), int(r[0][1:])))
-table(['ID', 'Run as', 'What it checks', 'Expected', 'Actual', 'Result'], rows, [600, 1350, 4110, 1200, 1200, 900])
+table(['ID', 'Run as', 'What it checks', 'Expected', 'Actual', 'Result'], rows, [600, 1350, 4110, 1200, 1200, 900], small=True)
 p('Error numbers: 1062 duplicate key, 1142 privilege denied, 1265 ENUM value rejected, 1288 view not updatable, '
   '1369 CHECK OPTION failed, 1370 EXECUTE denied, 1451/1452 foreign key, 1644 SIGNAL from our triggers and procedures, '
   '3819 CHECK constraint; 0 means the statement had to succeed.')
 table(['Run as', 'Passed', 'Failed'], summary + [['Total', str(sum(int(s[1]) for s in summary)),
                                                     str(sum(int(s[2]) for s in summary))]], [3120, 3120, 3120])
-bl = load('200_tests')
-part_fig('200_tests', [5, 7, 26, len(bl) - 1], 'Four of the root tests and the root summary', 'tests_root', blocks_=bl)
-bl = load('201_tests__as_rahul')
-part_fig('201_tests__as_rahul', [1, 6, len(bl) - 1], 'Analyst tests (two shown) and the analyst summary', 'tests_rahul', blocks_=bl)
-for st, who, key in (('202_tests__as_divya', 'Viewer', 'tests_divya'), ('203_tests__as_ananya', 'Admin', 'tests_ananya')):
-    bl = load(st)
-    part_fig(st, [2, len(bl) - 1], f'{who} tests (one shown) and the {who.lower()} summary', key, blocks_=bl)
+p('Each test step ends by printing its own passed/failed count; the totals above are read from those lines.')
 
 # ================================================================= 17 scope revision
 h1('17. Scope Revision and Design Changes since Review 2')
@@ -852,7 +845,8 @@ p('Design changes since Review 2 (numbering continues from the Review 2 change l
 chg = md.split('## 1.2 Design changes since Review 2')[1].split('## 1.3')[0]
 crow = [l for l in chg.split('\n') if l.startswith('| ') and not l.startswith('| #') and not l.startswith('| ---')]
 crows = [[re.sub(r'`([^`]*)`', r'\1', c.strip()) for c in l.strip('|').split('|')] for l in crow]
-table(['#', 'Change', 'Reason'], crows, [500, 3300, 5560])
+crows = [[n, c, re.split(r'(?<=[.:])\s', r, maxsplit=1)[0]] for n, c, r in crows]
+table(['#', 'Change', 'Reason (details in the section concerned)'], crows, [500, 3600, 5260], small=True)
 
 # ================================================================= 18 checklist
 h1('18. Review 3 Requirements Checklist', new_page=False)
@@ -872,33 +866,18 @@ table(['Requirement', 'Evidence', 'Where', 'Status'], [
     ['Normalisation and anomalies', 'Normalisation steps, an FD check and an update anomaly shown on the data', '9.1', 'Done'],
     ['Backup and recovery', 'mysqldump plus binary log, rehearsed to the position before a DELETE', '15', 'Done'],
     ['Final report', 'This document', '-', 'Done'],
-    ['Live demonstration and viva', 'Run sheet and rerunnable segment files (demo/), viva map (docs/viva_map.md)', '19', 'Ready'],
+    ['Live demonstration and viva', 'Run sheet and rerunnable segment files (demo/README.md), viva map (docs/viva_map.md)', 'repository', 'Ready'],
 ], [2500, 4560, 1300, 1000])
 
-# ================================================================= 19 demo plan
-h1('19. Live Demonstration Plan', new_page=False)
-p('The demonstration follows the order in the faculty template. Every segment is a separate file in demo/ that can '
-  'be run again on its own if the examiner asks to see something twice.')
-table(['Time', 'Step', 'What is shown', 'File'], [
-    ['0:30', '1. Clean build', f'Runner drops and rebuilds everything; row counts; {N_TESTS}/{N_TESTS} tests', 'runner/RUN_ME.bat, demo/01_build_check.sql'],
-    ['1:30', '2. Role-based access', 'Role matrix, REVOKE before/after, ERROR 1142 and 1369, the escalation fix, the audit trail, SQL injection', 'demo/02a to 02g'],
-    ['5:30', '3. Transaction with failure', 'Half a batch kept by COMMIT; the handler rolls back the whole batch; savepoint', 'demo/03_transaction.sql'],
-    ['6:30', '4. Triggers firing', 'Severity-9 attack opens an incident; a reported IP is retro-hunted; IOC rules refuse changes', 'demo/04_triggers.sql'],
-    ['7:30', '5. Optimisation', 'EXPLAIN without and with idx_src_time; EXPLAIN ANALYZE; an index hidden by a function', 'demo/05_optimisation.sql'],
-    ['8:30', '6. Concurrency', 'Lost update in two terminals, then the FOR UPDATE fix', 'demo/06_concurrency.md'],
-], [700, 2000, 4360, 2300])
-p('A live rebuild produces the same results, but a few run-dependent numbers will differ slightly from the figures: '
-  'EXPLAIN row estimates (they are sampled), timestamps, and AUTO_INCREMENT ids after rolled-back changes.')
-
 # ================================================================= 20-23
-h1('20. Limitations and Future Scope', new_page=False)
+h1('19. Limitations and Future Scope', new_page=False)
 lim = md.split('## 1.3 Limitations (replaces Review 2 section 17)')[1].split('# 2.')[0]
 bullets([re.sub(r'`([^`]*)`', r'\1', l[2:].strip()) for l in lim.split('\n') if l.startswith('- ')] + [
     'Future: run the procedures under a dedicated low-privilege definer account instead of root, so that a mistake '
     'in one procedure cannot reach the whole database.',
     'Future: very high log volumes would need archive tables or partitioning for old logs, and a streaming loader.'])
 
-h1('21. Conclusion', new_page=False)
+h1('20. Conclusion', new_page=False)
 p('Review 1 gave us a clean 3NF design and Review 2 showed it working. Review 3 made it defensible. Testing our own '
   'work found eight real defects: a script that only ran because our runner hid its mistake; a stored procedure that '
   'let an analyst bypass the row-level security we were proud of; a rollback demonstration that relied on a manual '
@@ -910,12 +889,12 @@ p('Review 1 gave us a clean 3NF design and Review 2 showed it working. Review 3 
   'a clean build. The biggest lesson was that a security feature is only as strong as the code that runs with more '
   'rights than its caller.')
 
-h1('22. Acknowledgement', new_page=False)
+h1('21. Acknowledgement', new_page=False)
 p('An AI assistant (Claude, by Anthropic) was used to review our SQL for defects, to help write parts of the Review 3 '
   'scripts and to help draft this report. Every script was run on MySQL 8.0.46, and every result in this report is '
   'the real output of that run.')
 
-h1('23. Work Break Down', new_page=False)
+h1('22. Work Break Down', new_page=False)
 wb = [r[:] for r in ROWS(527)[1:]]
 wb[0][2] = wb[0][2].replace('FastAPI backend', 'FastAPI backend (dropped from scope, section 17)')
 wb[2][1] = 'Yashneil Purkayastha'
@@ -931,7 +910,7 @@ for r, resp in zip(wb, (
 table(['Registration Number', 'Name', 'Work Assigned (Reviews 1 and 2)', 'Review 3 responsibility (presents and defends)'], wb,
       [1500, 1500, 3260, 3100])
 
-h1('24. Review Evaluation', new_page=False)
+h1('23. Review Evaluation', new_page=False)
 table(['COMPONENT', 'MARKS', 'SHLOK GUPTA', 'SHREYA BHUSHAN', 'YASHNEIL PURKAYASTHA'],
       [['Project work with screenshot', '5', '', '', ''], ['Viva', '5', '', '', ''], ['TOTAL', '10 MARKS', '', '', '']],
       [2560, 1300, 1800, 1850, 1850])

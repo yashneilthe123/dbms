@@ -29,7 +29,7 @@ function runs(r, size) {
 const border = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
 const borders = { top: border, bottom: border, left: border, right: border };
 
-function cellParas(c, isHeader) {
+function cellParas(c, isHeader, small) {
   const o = typeof c === 'string' ? { text: c } : c;
   const lines = String(o.text).split('\n');
   return lines.map(line => new Paragraph({
@@ -37,7 +37,7 @@ function cellParas(c, isHeader) {
     spacing: { before: 0, after: 0 },
     children: [new TextRun({
       text: line, bold: isHeader || !!o.b,
-      font: o.code ? MONO : FONT, size: o.code ? 15 : 20,
+      font: o.code ? MONO : FONT, size: o.code ? 15 : (small ? 17 : 20),
     })],
   }));
 }
@@ -54,7 +54,7 @@ function table(b) {
       margins: { top: 50, bottom: 50, left: 90, right: 90 },
       verticalAlign: VerticalAlign.CENTER,
       shading: header ? { type: ShadingType.CLEAR, color: 'auto', fill: 'F2F2F2' } : undefined,
-      children: cellParas(c, header),
+      children: cellParas(c, header, !!b.small),
     })),
   });
   const rows = [];
