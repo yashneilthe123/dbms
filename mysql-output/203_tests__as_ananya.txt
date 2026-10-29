@@ -34,13 +34,13 @@ Query OK, 0 rows affected (0.00 sec)
 
 --------------
 CALL sp_expect_error('A03', 'admin cannot delete audit rows',
-  "DELETE FROM incident_audit WHERE audit_id = 1", 1644)
+  "DELETE FROM incident_audit WHERE audit_id = 1", 1142)
 --------------
 
 +------+--------------------------------+----------+--------+--------+
 | test | checks                         | expected | actual | result |
 +------+--------------------------------+----------+--------+--------+
-| A03  | admin cannot delete audit rows | 1644     | 1644   | PASS   |
+| A03  | admin cannot delete audit rows | 1142     | 1142   | PASS   |
 +------+--------------------------------+----------+--------+--------+
 1 row in set (0.00 sec)
 
@@ -75,13 +75,41 @@ CALL sp_expect_error('A05', 'admin cannot change the schema',
 Query OK, 0 rows affected (0.00 sec)
 
 --------------
+CALL sp_expect_error('A06', 'admin cannot forge an audit row',
+  "INSERT INTO incident_audit (incident_id, action, changed_by) VALUES (7, 'UPDATE', 'rahul.mehta@localhost')", 1142)
+--------------
+
++------+---------------------------------+----------+--------+--------+
+| test | checks                          | expected | actual | result |
++------+---------------------------------+----------+--------+--------+
+| A06  | admin cannot forge an audit row | 1142     | 1142   | PASS   |
++------+---------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('A07', 'admin cannot edit an audit row',
+  "UPDATE incident_audit SET changed_by = 'nobody' WHERE audit_id = 1", 1142)
+--------------
+
++------+--------------------------------+----------+--------+--------+
+| test | checks                         | expected | actual | result |
++------+--------------------------------+----------+--------+--------+
+| A07  | admin cannot edit an audit row | 1142     | 1142   | PASS   |
++------+--------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
 SELECT @tests_pass AS passed, @tests_fail AS failed
 --------------
 
 +--------+--------+
 | passed | failed |
 +--------+--------+
-|      5 |      0 |
+|      7 |      0 |
 +--------+--------+
 1 row in set (0.00 sec)
 

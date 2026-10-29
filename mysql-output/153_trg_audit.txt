@@ -3,10 +3,11 @@ CREATE TRIGGER trg_incident_audit_update
 AFTER UPDATE ON incident
 FOR EACH ROW
 BEGIN
-  INSERT INTO incident_audit (incident_id, action, changed_by,
+  INSERT INTO incident_audit (incident_id, action, changed_by, changed_at,
                               old_status, new_status, old_priority, new_priority,
                               old_assigned_to, new_assigned_to)
   VALUES (OLD.incident_id, 'UPDATE', USER(),     
+          SYSDATE(6),                            
           OLD.status, NEW.status,                
           OLD.priority, NEW.priority,
           OLD.assigned_to, NEW.assigned_to);
@@ -20,9 +21,9 @@ CREATE TRIGGER trg_incident_audit_delete
 AFTER DELETE ON incident
 FOR EACH ROW
 BEGIN
-  INSERT INTO incident_audit (incident_id, action, changed_by,
+  INSERT INTO incident_audit (incident_id, action, changed_by, changed_at,
                               old_status, old_priority, old_assigned_to)
-  VALUES (OLD.incident_id, 'DELETE', USER(), OLD.status, OLD.priority, OLD.assigned_to);
+  VALUES (OLD.incident_id, 'DELETE', USER(), SYSDATE(6), OLD.status, OLD.priority, OLD.assigned_to);
 END
 --------------
 

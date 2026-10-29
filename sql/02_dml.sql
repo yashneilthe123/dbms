@@ -277,6 +277,23 @@ DELETE FROM asset WHERE asset_id = 1;
 INSERT INTO incident (title, priority, status, closed_at) VALUES ('Test', 'LOW', 'OPEN', '2026-10-27 10:00:00');
 
 
+-- ---- dml_normalisation_check ----
+-- functional dependency mitre_technique -> type_id: no technique maps to two attack types (empty result)
+SELECT mitre_technique, COUNT(DISTINCT type_id) AS types
+FROM attack_type GROUP BY mitre_technique HAVING COUNT(DISTINCT type_id) > 1;
+
+-- update anomaly: copy attacks and their asset's criticality into one flat table, as before 3NF
+CREATE TEMPORARY TABLE flat_attack AS
+SELECT e.event_id, a.hostname, a.criticality FROM attack_event e JOIN asset a ON a.asset_id = e.asset_id;
+UPDATE flat_attack SET criticality = 1 WHERE event_id = 1;
+SELECT hostname, GROUP_CONCAT(DISTINCT criticality ORDER BY criticality) AS criticality_values
+FROM flat_attack WHERE hostname = 'web-01' GROUP BY hostname;
+DROP TEMPORARY TABLE flat_attack;
+
+-- in the normalised schema the fact is stored once, so it cannot disagree with itself
+SELECT hostname, criticality FROM asset WHERE hostname = 'web-01';
+
+
 -- ---- dml_row_counts ----
 SELECT 'asset' AS table_name, COUNT(*) AS row_count FROM asset
 UNION ALL SELECT 'vulnerability', COUNT(*) FROM vulnerability
@@ -293,4 +310,5 @@ UNION ALL SELECT 'incident_event', COUNT(*) FROM incident_event
 UNION ALL SELECT 'ioc', COUNT(*) FROM ioc
 UNION ALL SELECT 'event_ioc', COUNT(*) FROM event_ioc
 UNION ALL SELECT 'retro_hunt_run', COUNT(*) FROM retro_hunt_run
-UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit;
+UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit
+UNION ALL SELECT 'incident_audit', COUNT(*) FROM incident_audit;

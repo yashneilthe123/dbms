@@ -8,6 +8,10 @@ import os, re
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+# hand-drawn look, like the Chen ER diagram: sketchy lines and boxes, plain font
+plt.xkcd(scale=0.9, length=110, randomness=2)
+plt.rcParams.update({'font.family': 'DejaVu Sans', 'path.effects': []})
 from matplotlib.patches import Rectangle, FancyArrowPatch
 from matplotlib.path import Path
 import matplotlib.patches as mpatches

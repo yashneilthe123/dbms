@@ -11,7 +11,7 @@ LEFT JOIN threat_actor ta ON ta.actor_id  = e.actor_id
 LEFT JOIN malware m       ON m.malware_id = e.malware_id
 --------------
 
-Query OK, 0 rows affected (0.06 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 SELECT event_id, event_time, src_ip, type_name, actor_name, severity

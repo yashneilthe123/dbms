@@ -74,9 +74,9 @@ CALL sp_check('T02', 'network_log is fully loaded', '50021', (SELECT COUNT(*) FR
 +------+-----------------------------+----------+--------+--------+
 | T02  | network_log is fully loaded | 50021    | 50021  | PASS   |
 +------+-----------------------------+----------+--------+--------+
-1 row in set (0.04 sec)
+1 row in set (0.02 sec)
 
-Query OK, 0 rows affected (0.04 sec)
+Query OK, 0 rows affected (0.02 sec)
 
 --------------
 CALL sp_expect_error('T03', 'CHECK rejects criticality 9',
@@ -116,9 +116,9 @@ CALL sp_expect_error('T05', 'FK rejects an unknown attack type',
 +------+-----------------------------------+----------+--------+--------+
 | T05  | FK rejects an unknown attack type | 1452     | 1452   | PASS   |
 +------+-----------------------------------+----------+--------+--------+
-1 row in set (0.01 sec)
+1 row in set (0.00 sec)
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.00 sec)
 
 --------------
 CALL sp_expect_error('T06', 'FK blocks deleting an attacked asset',
@@ -340,7 +340,7 @@ Query OK, 0 rows affected (0.00 sec)
 ROLLBACK
 --------------
 
-Query OK, 0 rows affected (0.00 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 CALL sp_check('T16', 'fn_severity_label(9.8), (6.5)', 'CRITICAL/MEDIUM',
@@ -515,13 +515,142 @@ CALL sp_check('T27', 'admin role has no CREATE/ALTER/DROP/TRIGGER', '0',
 Query OK, 0 rows affected (0.00 sec)
 
 --------------
+CALL sp_check('T29', 'all three accounts lock after 3 failed logins', '3',
+  (SELECT COUNT(*) FROM mysql.user WHERE user IN ('ananya.rao', 'rahul.mehta', 'divya.iyer')
+     AND JSON_EXTRACT(user_attributes, '$.Password_locking.failed_login_attempts') = 3))
+--------------
+
++------+-----------------------------------------------+----------+--------+--------+
+| test | checks                                        | expected | actual | result |
++------+-----------------------------------------------+----------+--------+--------+
+| T29  | all three accounts lock after 3 failed logins | 3        | 3      | PASS   |
++------+-----------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_check('T30', 'escalation cursor raised incident 6 from MEDIUM to HIGH', '1',
+  (SELECT COUNT(*) FROM incident_audit WHERE incident_id = 6 AND old_priority = 'MEDIUM'
+     AND new_priority = 'HIGH' AND changed_by LIKE 'root@%'))
+--------------
+
++------+---------------------------------------------------------+----------+--------+--------+
+| test | checks                                                  | expected | actual | result |
++------+---------------------------------------------------------+----------+--------+--------+
+| T30  | escalation cursor raised incident 6 from MEDIUM to HIGH | 1        | 1      | PASS   |
++------+---------------------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_check('T31', 'fn_asset_risk matches its formula for every asset', '0',
+  (SELECT COUNT(*) FROM asset a
+    WHERE fn_asset_risk(a.asset_id) <> a.criticality * 10
+          + 5 * (SELECT COUNT(*) FROM asset_vulnerability av WHERE av.asset_id = a.asset_id AND av.patched_at IS NULL)
+          + 2 * (SELECT COUNT(*) FROM attack_event e WHERE e.asset_id = a.asset_id AND e.blocked = 0)))
+--------------
+
++------+---------------------------------------------------+----------+--------+--------+
+| test | checks                                            | expected | actual | result |
++------+---------------------------------------------------+----------+--------+--------+
+| T31  | fn_asset_risk matches its formula for every asset | 0        | 0      | PASS   |
++------+---------------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('T32', 'an IOC version cannot be rewritten',
+  "UPDATE ioc SET ioc_value = '198.51.100.99' WHERE ioc_version_id = 1", 1644)
+--------------
+
++------+------------------------------------+----------+--------+--------+
+| test | checks                             | expected | actual | result |
++------+------------------------------------+----------+--------+--------+
+| T32  | an IOC version cannot be rewritten | 1644     | 1644   | PASS   |
++------+------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+UPDATE ioc SET recorded_to = SYSDATE() WHERE ioc_version_id = 12
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+CALL sp_expect_error('T33', 'a closed IOC version cannot be reopened',
+  "UPDATE ioc SET recorded_to = NULL WHERE ioc_version_id = 12", 1644)
+--------------
+
++------+-----------------------------------------+----------+--------+--------+
+| test | checks                                  | expected | actual | result |
++------+-----------------------------------------+----------+--------+--------+
+| T33  | a closed IOC version cannot be reopened | 1644     | 1644   | PASS   |
++------+-----------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+ROLLBACK
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_check('T34', 'admin has no write privilege on incident_audit', '0',
+  (SELECT COUNT(*) FROM information_schema.table_privileges
+    WHERE grantee = "'sx_admin'@'%'" AND table_name = 'incident_audit'))
+--------------
+
++------+------------------------------------------------+----------+--------+--------+
+| test | checks                                         | expected | actual | result |
++------+------------------------------------------------+----------+--------+--------+
+| T34  | admin has no write privilege on incident_audit | 0        | 0      | PASS   |
++------+------------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SET @me = 2
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('T35', 'search procedure ignores a forged @me (root is no analyst)',
+  "CALL sp_search_incidents('Brute')", 1644)
+--------------
+
++------+------------------------------------------------------------+----------+--------+--------+
+| test | checks                                                     | expected | actual | result |
++------+------------------------------------------------------------+----------+--------+--------+
+| T35  | search procedure ignores a forged @me (root is no analyst) | 1644     | 1644   | PASS   |
++------+------------------------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
 SELECT @tests_pass AS passed, @tests_fail AS failed
 --------------
 
 +--------+--------+
 | passed | failed |
 +--------+--------+
-|     28 |      0 |
+|     35 |      0 |
 +--------+--------+
 1 row in set (0.00 sec)
 

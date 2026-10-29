@@ -11,6 +11,8 @@ Suggested leads follow the Review 2 work breakdown:
 | 18–27 | Indexes and transactions | Shlok |
 | 28–34 | Procedural SQL and security | All |
 
+If the examiner compares a live rebuild with the report: the rules and results are the same, but EXPLAIN row estimates (sampled statistics), timestamps and AUTO_INCREMENT ids after rolled-back changes will differ slightly.
+
 **Everyone must be able to answer all 34**, because the draw is random. Practise with a mock viva: draw 6 at random, and the other two score you 0–3.
 
 ---
@@ -73,7 +75,7 @@ Suggested leads follow the Review 2 work breakdown:
 | Can be rolled back | Yes | No, implicit commit | No, implicit commit |
 | Allowed on a table other tables point to | Yes, rows checked one by one | No: `TRUNCATE asset` → ERROR 1701 | — |
 
-- TRUNCATE needs the DROP privilege. That is why `sx_admin` cannot truncate `incident_audit` (test A04).
+- TRUNCATE needs the DROP privilege. That is why `sx_admin` cannot truncate `incident_audit` (test A04). It cannot DELETE or INSERT there either: only the triggers write it (A03, A06).
 
 ## Queries
 
@@ -126,7 +128,7 @@ Suggested leads follow the Review 2 work breakdown:
 | type | `range` (was `ALL`) | Read a slice of the index instead of every row |
 | key | `idx_src_time` | The index chosen |
 | key_len | 187 | Both columns used: VARCHAR(45) in utf8mb4 = 45×4+2 bytes, plus DATETIME = 5 bytes |
-| rows | 8 (was 50,163) | Estimated rows read |
+| rows | 8 (was about 50,000) | Estimated rows read: an estimate from table statistics, so it moves a little after every ANALYZE TABLE |
 | Extra | `Using index condition` | The `log_time` range is checked inside the index before rows are fetched (`dst_asset_id` is not in the index, so the row is still read) |
 
 - For joins, MySQL 8 uses nested-loop with index lookups (`eq_ref`/`ref`), or a hash join when there is no usable index.
@@ -134,7 +136,7 @@ Suggested leads follow the Review 2 work breakdown:
 
 **21. Your table has 200 rows and the index gives no speed-up. Why? How would you prove the benefit?**
 - `asset` has 10 rows on a single page, so a full scan is cheaper than an index lookup and the optimiser ignores the index.
-- We proved the benefit on 50,021 log lines: 50,163 rows read become 8 (steps 181/182).
+- We proved the benefit on 50,021 log lines: about 50,000 estimated rows become 8 (steps 181/182).
 
 **22. What does adding five more indexes cost?**
 - Every insert into `network_log` must update every index B+tree: slower loads (our 50,000-row CTE) and slower retro-hunt inserts.
@@ -181,7 +183,7 @@ Suggested leads follow the Review 2 work breakdown:
 **28. Why is your rule in a procedure or trigger and not the application? Give a trigger hazard.**
 - Rules that must never be skipped live in the database. "Severity ≥ 8 opens an incident" and "IOC history is append-only" hold whichever tool writes the data.
 - Hazards from our own triggers:
-  - The retro-hunt trigger scans logs inside the INSERT's transaction, holding locks: a second insert waits about 3 s.
+  - The retro-hunt trigger scans logs inside the INSERT's transaction, holding locks: a second insert of the same IP waits until the first commits (rehearsed: about 2 s), then is rejected.
   - The auto-incident trigger has a hidden side effect: an INSERT into `attack_event` also writes `incident`.
   - Cascaded deletes do not fire triggers.
 
@@ -199,7 +201,8 @@ Suggested leads follow the Review 2 work breakdown:
   1. Parameters (`?`) instead of string concatenation: `sp_search_incidents` returns nothing for the same input.
   2. Least privilege for the code itself: an INVOKER procedure or a low-privilege definer.
   3. Validating input.
-- GRANT does not help because rahul only had EXECUTE. The injected SQL ran with the **procedure's** rights (root, as DEFINER).
+- GRANT does not help because rahul only had EXECUTE. The injected SQL ran with the **procedure's** rights (root, as DEFINER), so it could even have read the password hashes in `mysql.user`. A definer account limited to this database would contain it.
+- The safe procedure also clears its session variable `@me` and refuses a caller it cannot match to an analyst (test T35).
 - PREPARE accepts one statement only, so `'; DROP TABLE` fails with 1064.
 
 **32. A staff member should see only their own data. Design it with views, roles and privileges, without changing the application.**
@@ -224,3 +227,7 @@ Suggested leads follow the Review 2 work breakdown:
 2. **Privilege escalation.** `sp_assign_incident` runs as root (DEFINER). An analyst could use it to give away or take any incident, bypassing the `WITH CHECK OPTION` we were proud of. Fixed by checking `USER()` inside the procedure. (`CURRENT_USER()` there is root. `CALL sp_whoami()` shows both.)
 3. **"An error rolls back my transaction."** It doesn't. MySQL undoes only the failed statement. Our Review 2 demo only worked because the script called ROLLBACK. Fixed with an exit handler (`sp_load_log_batch`, step 172).
 4. **Closed IOCs blocked new versions.** The overlap trigger also counted versions already closed with `recorded_to`. Fixed in Review 3.
+5. **The admin could forge audit rows.** With INSERT on the whole schema, `sx_admin` could add an audit row naming rahul. Now writes are granted per data table and `incident_audit` is read-only for every role; only the triggers write it (tests A06, T34).
+6. **IOC history could be rewritten.** Only DELETE was blocked; an UPDATE could change an indicator or reopen a closed version. `trg_ioc_only_close` now allows only closing (T32, T33).
+7. **Backdating with `SET timestamp`.** Any session may set its own clock, and `NOW()` follows it. `sp_report_ioc`, the audit triggers and the retro-hunt now use `SYSDATE()`, the real clock (S12).
+8. **The "safe" search trusted a session variable.** It read the caller into `@me` without clearing it first. Now it clears it and refuses a caller with no analyst row (T35).

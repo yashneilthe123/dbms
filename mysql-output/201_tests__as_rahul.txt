@@ -112,16 +112,16 @@ CALL sp_expect_error('S08', 'procedure lets him claim an unassigned incident',
 +-------------+---------------+-------------+
 |           9 | INVESTIGATING |           2 |
 +-------------+---------------+-------------+
-1 row in set (0.01 sec)
+1 row in set (0.00 sec)
 
 +------+-------------------------------------------------+----------+--------+--------+
 | test | checks                                          | expected | actual | result |
 +------+-------------------------------------------------+----------+--------+--------+
 | S08  | procedure lets him claim an unassigned incident | 0        | 0      | PASS   |
 +------+-------------------------------------------------+----------+--------+--------+
-1 row in set (0.01 sec)
+1 row in set (0.00 sec)
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.00 sec)
 
 --------------
 CALL sp_expect_error('S09', 'analyst cannot write the ioc table directly',
@@ -145,7 +145,7 @@ CALL sp_expect_error('S10', 'analyst reports an IOC through the procedure',
 +----------------+----------+-------------+---------------------+---------------------+
 | ioc_version_id | ioc_type | ioc_value   | valid_from          | recorded_from       |
 +----------------+----------+-------------+---------------------+---------------------+
-|             17 | ip       | 192.0.2.200 | 2026-10-01 00:00:00 | 2026-10-29 15:22:18 |
+|             17 | ip       | 192.0.2.200 | 2026-10-01 00:00:00 | 2026-10-29 22:31:26 |
 +----------------+----------+-------------+---------------------+---------------------+
 1 row in set (0.01 sec)
 
@@ -173,13 +173,52 @@ CALL sp_expect_error('S11', 'analyst cannot read the audit trail',
 Query OK, 0 rows affected (0.00 sec)
 
 --------------
+SET timestamp = UNIX_TIMESTAMP('2026-01-01 00:00:00')
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_report_ioc('ip', '192.0.2.201', '2026-10-01', NULL, NULL)
+--------------
+
++----------------+----------+-------------+---------------------+---------------------+
+| ioc_version_id | ioc_type | ioc_value   | valid_from          | recorded_from       |
++----------------+----------+-------------+---------------------+---------------------+
+|             18 | ip       | 192.0.2.201 | 2026-10-01 00:00:00 | 2026-10-29 22:31:26 |
++----------------+----------+-------------+---------------------+---------------------+
+1 row in set (0.01 sec)
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+SET timestamp = DEFAULT
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_check('S12', 'SET timestamp cannot backdate a reported IOC', '0',
+  (SELECT COUNT(*) FROM v_ioc WHERE ioc_value = '192.0.2.201' AND recorded_from < '2026-02-01'))
+--------------
+
++------+----------------------------------------------+----------+--------+--------+
+| test | checks                                       | expected | actual | result |
++------+----------------------------------------------+----------+--------+--------+
+| S12  | SET timestamp cannot backdate a reported IOC | 0        | 0      | PASS   |
++------+----------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
 SELECT @tests_pass AS passed, @tests_fail AS failed
 --------------
 
 +--------+--------+
 | passed | failed |
 +--------+--------+
-|     11 |      0 |
+|     12 |      0 |
 +--------+--------+
 1 row in set (0.00 sec)
 

@@ -111,5 +111,29 @@ CALL sp_check('T26', 'injectable procedure was removed', '0',
 CALL sp_check('T27', 'admin role has no CREATE/ALTER/DROP/TRIGGER', '0',
   (SELECT COUNT(*) FROM information_schema.schema_privileges
     WHERE grantee = "'sx_admin'@'%'" AND privilege_type IN ('CREATE', 'ALTER', 'DROP', 'TRIGGER')));
+CALL sp_check('T29', 'all three accounts lock after 3 failed logins', '3',
+  (SELECT COUNT(*) FROM mysql.user WHERE user IN ('ananya.rao', 'rahul.mehta', 'divya.iyer')
+     AND JSON_EXTRACT(user_attributes, '$.Password_locking.failed_login_attempts') = 3));
+CALL sp_check('T30', 'escalation cursor raised incident 6 from MEDIUM to HIGH', '1',
+  (SELECT COUNT(*) FROM incident_audit WHERE incident_id = 6 AND old_priority = 'MEDIUM'
+     AND new_priority = 'HIGH' AND changed_by LIKE 'root@%'));
+CALL sp_check('T31', 'fn_asset_risk matches its formula for every asset', '0',
+  (SELECT COUNT(*) FROM asset a
+    WHERE fn_asset_risk(a.asset_id) <> a.criticality * 10
+          + 5 * (SELECT COUNT(*) FROM asset_vulnerability av WHERE av.asset_id = a.asset_id AND av.patched_at IS NULL)
+          + 2 * (SELECT COUNT(*) FROM attack_event e WHERE e.asset_id = a.asset_id AND e.blocked = 0)));
+CALL sp_expect_error('T32', 'an IOC version cannot be rewritten',
+  "UPDATE ioc SET ioc_value = '198.51.100.99' WHERE ioc_version_id = 1", 1644);
+START TRANSACTION;
+UPDATE ioc SET recorded_to = SYSDATE() WHERE ioc_version_id = 12;
+CALL sp_expect_error('T33', 'a closed IOC version cannot be reopened',
+  "UPDATE ioc SET recorded_to = NULL WHERE ioc_version_id = 12", 1644);
+ROLLBACK;
+CALL sp_check('T34', 'admin has no write privilege on incident_audit', '0',
+  (SELECT COUNT(*) FROM information_schema.table_privileges
+    WHERE grantee = "'sx_admin'@'%'" AND table_name = 'incident_audit'));
+SET @me = 2;  -- pretend to be rahul by setting the session variable the procedure uses
+CALL sp_expect_error('T35', 'search procedure ignores a forged @me (root is no analyst)',
+  "CALL sp_search_incidents('Brute')", 1644);
 
 SELECT @tests_pass AS passed, @tests_fail AS failed;

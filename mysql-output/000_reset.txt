@@ -2,7 +2,7 @@
 DROP DATABASE IF EXISTS sentinelx
 --------------
 
-Query OK, 23 rows affected (0.44 sec)
+Query OK, 23 rows affected (0.24 sec)
 
 --------------
 DROP USER IF EXISTS 'ananya.rao'@'localhost', 'rahul.mehta'@'localhost', 'divya.iyer'@'localhost'

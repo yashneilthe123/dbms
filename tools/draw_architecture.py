@@ -3,6 +3,10 @@ import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+# hand-drawn look, like the Chen ER diagram: sketchy lines and boxes, plain font
+plt.xkcd(scale=0.9, length=110, randomness=2)
+plt.rcParams.update({'font.family': 'DejaVu Sans', 'path.effects': []})
 from matplotlib.patches import FancyBboxPatch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +40,7 @@ ax.text(45, 660, 'DATA IN (TEST DATA)', fontsize=13, fontweight='bold', va='cent
 box(40, 520, 360, 90, 'Firewall / IDS logs', '50,021 lines (50,000 by a CTE)', bold=False, size=12.5)
 box(40, 400, 360, 90, 'Attacks, IOCs, incidents', '30 attacks, 12 IOCs, 7 incidents', bold=False, size=12.5)
 box(40, 280, 360, 90, 'tools/gen_seed.py', 'writes the INSERT scripts', bold=False, size=12.5)
-box(40, 160, 360, 90, 'One batch = one transaction', 'a failed batch is rolled back', bold=False, size=12.5)
+box(40, 160, 360, 90, 'sp_load_log_batch', 'new batches: all or nothing', bold=False, size=12.5)
 
 # database
 ax.add_patch(FancyBboxPatch((520, 30), 620, 660, boxstyle='round,pad=0,rounding_size=24', fc='white', ec='black', lw=2.2))

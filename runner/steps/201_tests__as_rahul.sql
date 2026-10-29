@@ -21,4 +21,10 @@ CALL sp_expect_error('S10', 'analyst reports an IOC through the procedure',
   "CALL sp_report_ioc('ip', '192.0.2.200', '2026-10-01', NULL, NULL)", 0);
 CALL sp_expect_error('S11', 'analyst cannot read the audit trail',
   "DO (SELECT COUNT(*) FROM incident_audit)", 1142);
+-- try to backdate an indicator by moving this session's clock
+SET timestamp = UNIX_TIMESTAMP('2026-01-01 00:00:00');
+CALL sp_report_ioc('ip', '192.0.2.201', '2026-10-01', NULL, NULL);
+SET timestamp = DEFAULT;
+CALL sp_check('S12', 'SET timestamp cannot backdate a reported IOC', '0',
+  (SELECT COUNT(*) FROM v_ioc WHERE ioc_value = '192.0.2.201' AND recorded_from < '2026-02-01'));
 SELECT @tests_pass AS passed, @tests_fail AS failed;

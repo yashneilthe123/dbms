@@ -43,6 +43,10 @@ DELETE FROM incident_audit WHERE audit_id = 1
 --------------
 
 --------------
+INSERT INTO incident_audit (incident_id, action, changed_by) VALUES (7, 'UPDATE', 'rahul.mehta@localhost')
+--------------
+
+--------------
 TRUNCATE TABLE incident_audit
 --------------
 

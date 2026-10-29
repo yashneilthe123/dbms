@@ -21,3 +21,4 @@ SELECT incident_id, title, priority FROM incident ORDER BY incident_id DESC LIMI
 INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from)
 VALUES ('ip', '172.16.3.4', '2026-10-05', NOW());                -- ERROR 1644: overlapping version
 DELETE FROM ioc WHERE ioc_value = '172.16.3.4';                   -- ERROR 1644: append-only
+UPDATE ioc SET ioc_value = '172.16.3.5' WHERE ioc_value = '172.16.3.4';  -- ERROR 1644: versions cannot be rewritten

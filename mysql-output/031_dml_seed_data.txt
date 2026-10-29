@@ -42,7 +42,7 @@ INSERT INTO attack_type (type_id, type_name, mitre_technique, base_severity) VAL
   (8, 'Command and Control', 'T1071', 7)
 --------------
 
-Query OK, 8 rows affected (0.01 sec)
+Query OK, 8 rows affected (0.00 sec)
 Records: 8  Duplicates: 0  Warnings: 0
 
 --------------

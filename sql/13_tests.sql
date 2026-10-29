@@ -118,6 +118,30 @@ CALL sp_check('T26', 'injectable procedure was removed', '0',
 CALL sp_check('T27', 'admin role has no CREATE/ALTER/DROP/TRIGGER', '0',
   (SELECT COUNT(*) FROM information_schema.schema_privileges
     WHERE grantee = "'sx_admin'@'%'" AND privilege_type IN ('CREATE', 'ALTER', 'DROP', 'TRIGGER')));
+CALL sp_check('T29', 'all three accounts lock after 3 failed logins', '3',
+  (SELECT COUNT(*) FROM mysql.user WHERE user IN ('ananya.rao', 'rahul.mehta', 'divya.iyer')
+     AND JSON_EXTRACT(user_attributes, '$.Password_locking.failed_login_attempts') = 3));
+CALL sp_check('T30', 'escalation cursor raised incident 6 from MEDIUM to HIGH', '1',
+  (SELECT COUNT(*) FROM incident_audit WHERE incident_id = 6 AND old_priority = 'MEDIUM'
+     AND new_priority = 'HIGH' AND changed_by LIKE 'root@%'));
+CALL sp_check('T31', 'fn_asset_risk matches its formula for every asset', '0',
+  (SELECT COUNT(*) FROM asset a
+    WHERE fn_asset_risk(a.asset_id) <> a.criticality * 10
+          + 5 * (SELECT COUNT(*) FROM asset_vulnerability av WHERE av.asset_id = a.asset_id AND av.patched_at IS NULL)
+          + 2 * (SELECT COUNT(*) FROM attack_event e WHERE e.asset_id = a.asset_id AND e.blocked = 0)));
+CALL sp_expect_error('T32', 'an IOC version cannot be rewritten',
+  "UPDATE ioc SET ioc_value = '198.51.100.99' WHERE ioc_version_id = 1", 1644);
+START TRANSACTION;
+UPDATE ioc SET recorded_to = SYSDATE() WHERE ioc_version_id = 12;
+CALL sp_expect_error('T33', 'a closed IOC version cannot be reopened',
+  "UPDATE ioc SET recorded_to = NULL WHERE ioc_version_id = 12", 1644);
+ROLLBACK;
+CALL sp_check('T34', 'admin has no write privilege on incident_audit', '0',
+  (SELECT COUNT(*) FROM information_schema.table_privileges
+    WHERE grantee = "'sx_admin'@'%'" AND table_name = 'incident_audit'));
+SET @me = 2;  -- pretend to be rahul by setting the session variable the procedure uses
+CALL sp_expect_error('T35', 'search procedure ignores a forged @me (root is no analyst)',
+  "CALL sp_search_incidents('Brute')", 1644);
 
 SELECT @tests_pass AS passed, @tests_fail AS failed;
 
@@ -147,6 +171,12 @@ CALL sp_expect_error('S10', 'analyst reports an IOC through the procedure',
   "CALL sp_report_ioc('ip', '192.0.2.200', '2026-10-01', NULL, NULL)", 0);
 CALL sp_expect_error('S11', 'analyst cannot read the audit trail',
   "DO (SELECT COUNT(*) FROM incident_audit)", 1142);
+-- try to backdate an indicator by moving this session's clock
+SET timestamp = UNIX_TIMESTAMP('2026-01-01 00:00:00');
+CALL sp_report_ioc('ip', '192.0.2.201', '2026-10-01', NULL, NULL);
+SET timestamp = DEFAULT;
+CALL sp_check('S12', 'SET timestamp cannot backdate a reported IOC', '0',
+  (SELECT COUNT(*) FROM v_ioc WHERE ioc_value = '192.0.2.201' AND recorded_from < '2026-02-01'));
 SELECT @tests_pass AS passed, @tests_fail AS failed;
 
 
@@ -174,9 +204,13 @@ CALL sp_expect_error('A01', 'admin can change incident data',
 CALL sp_check('A02', '... and the audit trail names the admin', 'ananya.rao',
   (SELECT SUBSTRING_INDEX(changed_by, '@', 1) FROM incident_audit ORDER BY audit_id DESC LIMIT 1));
 CALL sp_expect_error('A03', 'admin cannot delete audit rows',
-  "DELETE FROM incident_audit WHERE audit_id = 1", 1644);
+  "DELETE FROM incident_audit WHERE audit_id = 1", 1142);
 CALL sp_expect_error('A04', 'admin cannot TRUNCATE the audit trail',
   "TRUNCATE TABLE incident_audit", 1142);
 CALL sp_expect_error('A05', 'admin cannot change the schema',
   "ALTER TABLE incident ADD COLUMN note VARCHAR(10)", 1142);
+CALL sp_expect_error('A06', 'admin cannot forge an audit row',
+  "INSERT INTO incident_audit (incident_id, action, changed_by) VALUES (7, 'UPDATE', 'rahul.mehta@localhost')", 1142);
+CALL sp_expect_error('A07', 'admin cannot edit an audit row',
+  "UPDATE incident_audit SET changed_by = 'nobody' WHERE audit_id = 1", 1142);
 SELECT @tests_pass AS passed, @tests_fail AS failed;

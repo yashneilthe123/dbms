@@ -5,11 +5,12 @@ CREATE TRIGGER trg_incident_audit_update
 AFTER UPDATE ON incident
 FOR EACH ROW
 BEGIN
-  INSERT INTO incident_audit (incident_id, action, changed_by,
+  INSERT INTO incident_audit (incident_id, action, changed_by, changed_at,
                               old_status, new_status, old_priority, new_priority,
                               old_assigned_to, new_assigned_to)
   VALUES (OLD.incident_id, 'UPDATE', USER(),     -- USER(), not CURRENT_USER(): inside a trigger
-          OLD.status, NEW.status,                -- CURRENT_USER() is the trigger's definer (root)
+          SYSDATE(6),                            -- CURRENT_USER() is the trigger's definer (root);
+          OLD.status, NEW.status,                -- SYSDATE(), unlike NOW(), ignores SET timestamp
           OLD.priority, NEW.priority,
           OLD.assigned_to, NEW.assigned_to);
 END //
@@ -18,9 +19,9 @@ CREATE TRIGGER trg_incident_audit_delete
 AFTER DELETE ON incident
 FOR EACH ROW
 BEGIN
-  INSERT INTO incident_audit (incident_id, action, changed_by,
+  INSERT INTO incident_audit (incident_id, action, changed_by, changed_at,
                               old_status, old_priority, old_assigned_to)
-  VALUES (OLD.incident_id, 'DELETE', USER(), OLD.status, OLD.priority, OLD.assigned_to);
+  VALUES (OLD.incident_id, 'DELETE', USER(), SYSDATE(6), OLD.status, OLD.priority, OLD.assigned_to);
 END //
 
 -- the trail itself is append-only

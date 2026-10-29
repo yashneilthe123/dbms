@@ -16,8 +16,13 @@ END //
 
 CREATE PROCEDURE sp_search_incidents(IN p_text VARCHAR(100))
 BEGIN
+  -- @me is a session variable the caller could set, so clear it and insist on a real analyst
+  SET @me = NULL;
   SELECT analyst_id INTO @me FROM analyst
    WHERE email = CONCAT(SUBSTRING_INDEX(USER(), '@', 1), '@sentinelx.in');
+  IF @me IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Caller is not a registered analyst';
+  END IF;
   SET @text = p_text;
   PREPARE st FROM 'SELECT incident_id, title, priority, status, assigned_to FROM incident
                    WHERE assigned_to = ? AND title LIKE CONCAT(''%'', ?, ''%'')';

@@ -11,3 +11,4 @@ INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from)
 VALUES ('ip', '198.51.100.77', '2026-10-01 00:00:00', '2026-10-28 11:00:00');
 
 DELETE FROM ioc WHERE ioc_value = '198.51.100.77';
+UPDATE ioc SET ioc_value = '198.51.100.78' WHERE ioc_value = '198.51.100.77';

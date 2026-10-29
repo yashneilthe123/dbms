@@ -1,14 +1,9 @@
-SentinelX concurrency rehearsal, MySQL 8.0.46, 2026-10-29. Terminal A = root, terminal B = ananya.rao (admin).
-The sessions were timed with DO SLEEP() so B's statements land between A's, as in demo/06_concurrency.md.
+SentinelX concurrency rehearsal, MySQL 8.0.46. Terminal A = root, terminal B = ananya.rao (admin).
+The two sessions really run at the same time; DO SLEEP() makes B's statements land between A's.
+SYSDATE(6) is the real clock at the moment a statement returns (NOW() would show when it started).
 
 ================ 6.1 Lost update (no locking) ================
 ---------------- terminal A ----------------
---------------
-SET SESSION innodb_lock_wait_timeout=5
---------------
-
-Query OK, 0 rows affected
-
 --------------
 START TRANSACTION
 --------------
@@ -16,14 +11,14 @@ START TRANSACTION
 Query OK, 0 rows affected
 
 --------------
-SELECT 'A1' step, priority FROM incident WHERE incident_id=6
+SELECT priority, SYSDATE(6) AS a_read_at FROM incident WHERE incident_id = 6
 --------------
 
-+------+----------+
-| step | priority |
-+------+----------+
-| A1   | MEDIUM   |
-+------+----------+
++----------+----------------------------+
+| priority | a_read_at                  |
++----------+----------------------------+
+| MEDIUM   | 2026-10-29 22:33:20.538102 |
++----------+----------------------------+
 1 row in set
 
 --------------
@@ -33,7 +28,7 @@ DO SLEEP(2)
 Query OK, 0 rows affected
 
 --------------
-UPDATE incident SET priority='HIGH' WHERE incident_id=6
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 6
 --------------
 
 Query OK, 1 row affected
@@ -45,24 +40,7 @@ COMMIT
 
 Query OK, 0 rows affected
 
---------------
-SELECT 'A2 committed HIGH' step
---------------
-
-+-------------------+
-| step              |
-+-------------------+
-| A2 committed HIGH |
-+-------------------+
-1 row in set
-
 ---------------- terminal B ----------------
---------------
-SET SESSION innodb_lock_wait_timeout=5
---------------
-
-Query OK, 0 rows affected
-
 --------------
 START TRANSACTION
 --------------
@@ -70,14 +48,14 @@ START TRANSACTION
 Query OK, 0 rows affected
 
 --------------
-SELECT 'B1' step, priority FROM incident WHERE incident_id=6
+SELECT priority, SYSDATE(6) AS b_read_at FROM incident WHERE incident_id = 6
 --------------
 
-+------+----------+
-| step | priority |
-+------+----------+
-| B1   | MEDIUM   |
-+------+----------+
++----------+----------------------------+
+| priority | b_read_at                  |
++----------+----------------------------+
+| MEDIUM   | 2026-10-29 22:33:21.640291 |
++----------+----------------------------+
 1 row in set
 
 --------------
@@ -87,7 +65,7 @@ DO SLEEP(2)
 Query OK, 0 rows affected
 
 --------------
-UPDATE incident SET priority='HIGH' WHERE incident_id=6
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 6
 --------------
 
 Query OK, 0 rows affected
@@ -100,25 +78,32 @@ COMMIT
 Query OK, 0 rows affected
 
 --------------
-SELECT 'B2 committed HIGH' step
+SELECT priority AS final_priority FROM incident WHERE incident_id = 6
 --------------
 
-+-------------------+
-| step              |
-+-------------------+
-| B2 committed HIGH |
-+-------------------+
++----------------+
+| final_priority |
++----------------+
+| HIGH           |
++----------------+
 1 row in set
+
+--------------
+SELECT SUBSTRING_INDEX(changed_by, '@', 1) AS who, old_priority, new_priority
+FROM incident_audit WHERE incident_id = 6 ORDER BY audit_id DESC LIMIT 2
+--------------
+
++------------+--------------+--------------+
+| who        | old_priority | new_priority |
++------------+--------------+--------------+
+| ananya.rao | HIGH         | HIGH         |
+| root       | MEDIUM       | HIGH         |
++------------+--------------+--------------+
+2 rows in set
 
 
 ================ 6.2 With SELECT ... FOR UPDATE ================
 ---------------- terminal A ----------------
---------------
-SET SESSION innodb_lock_wait_timeout=5
---------------
-
-Query OK, 0 rows affected
-
 --------------
 START TRANSACTION
 --------------
@@ -126,14 +111,14 @@ START TRANSACTION
 Query OK, 0 rows affected
 
 --------------
-SELECT 'A1' step, priority, NOW(6) t FROM incident WHERE incident_id=6 FOR UPDATE
+SELECT priority, SYSDATE(6) AS a_locked_at FROM incident WHERE incident_id = 6 FOR UPDATE
 --------------
 
-+------+----------+----------------------------+
-| step | priority | t                          |
-+------+----------+----------------------------+
-| A1   | MEDIUM   | 2026-10-29 11:22:42.149962 |
-+------+----------+----------------------------+
++----------+----------------------------+
+| priority | a_locked_at                |
++----------+----------------------------+
+| MEDIUM   | 2026-10-29 22:33:23.935361 |
++----------+----------------------------+
 1 row in set
 
 --------------
@@ -143,11 +128,22 @@ DO SLEEP(3)
 Query OK, 0 rows affected
 
 --------------
-UPDATE incident SET priority='HIGH' WHERE incident_id=6
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 6
 --------------
 
 Query OK, 1 row affected
 Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+SELECT SYSDATE(6) AS a_commits_at
+--------------
+
++----------------------------+
+| a_commits_at               |
++----------------------------+
+| 2026-10-29 22:33:26.940922 |
++----------------------------+
+1 row in set
 
 --------------
 COMMIT
@@ -157,10 +153,15 @@ Query OK, 0 rows affected
 
 ---------------- terminal B ----------------
 --------------
-SET SESSION innodb_lock_wait_timeout=5
+SELECT SYSDATE(6) AS b_asks_at
 --------------
 
-Query OK, 0 rows affected
++----------------------------+
+| b_asks_at                  |
++----------------------------+
+| 2026-10-29 22:33:24.988212 |
++----------------------------+
+1 row in set
 
 --------------
 START TRANSACTION
@@ -169,18 +170,18 @@ START TRANSACTION
 Query OK, 0 rows affected
 
 --------------
-SELECT 'B1' step, priority, NOW(6) t FROM incident WHERE incident_id=6 FOR UPDATE
+SELECT priority, SYSDATE(6) AS b_got_row_at FROM incident WHERE incident_id = 6 FOR UPDATE
 --------------
 
-+------+----------+----------------------------+
-| step | priority | t                          |
-+------+----------+----------------------------+
-| B1   | HIGH     | 2026-10-29 11:22:43.190500 |
-+------+----------+----------------------------+
++----------+----------------------------+
+| priority | b_got_row_at               |
++----------+----------------------------+
+| HIGH     | 2026-10-29 22:33:26.946861 |
++----------+----------------------------+
 1 row in set
 
 --------------
-UPDATE incident SET priority='CRITICAL' WHERE incident_id=6
+UPDATE incident SET priority = 'CRITICAL' WHERE incident_id = 6
 --------------
 
 Query OK, 1 row affected
@@ -192,11 +193,22 @@ COMMIT
 
 Query OK, 0 rows affected
 
+--------------
+SELECT priority AS final_priority FROM incident WHERE incident_id = 6
+--------------
+
++----------------+
+| final_priority |
++----------------+
+| CRITICAL       |
++----------------+
+1 row in set
+
 
 ================ 6.3 Deadlock ================
 ---------------- terminal A ----------------
 --------------
-SET SESSION innodb_lock_wait_timeout=10
+SET SESSION innodb_lock_wait_timeout = 10
 --------------
 
 Query OK, 0 rows affected
@@ -208,7 +220,7 @@ START TRANSACTION
 Query OK, 0 rows affected
 
 --------------
-UPDATE incident SET priority='HIGH' WHERE incident_id=3
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 3
 --------------
 
 Query OK, 1 row affected
@@ -221,18 +233,18 @@ DO SLEEP(2)
 Query OK, 0 rows affected
 
 --------------
-UPDATE incident SET priority='HIGH' WHERE incident_id=6
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 6
 --------------
 
 Query OK, 1 row affected
 Rows matched: 1  Changed: 1  Warnings: 0
 
 --------------
-SELECT 'A got both rows' step
+SELECT 'A got both rows' AS a
 --------------
 
 +-----------------+
-| step            |
+| a               |
 +-----------------+
 | A got both rows |
 +-----------------+
@@ -246,7 +258,7 @@ Query OK, 0 rows affected
 
 ---------------- terminal B ----------------
 --------------
-SET SESSION innodb_lock_wait_timeout=10
+SET SESSION innodb_lock_wait_timeout = 10
 --------------
 
 Query OK, 0 rows affected
@@ -258,7 +270,7 @@ START TRANSACTION
 Query OK, 0 rows affected
 
 --------------
-UPDATE incident SET priority='HIGH' WHERE incident_id=6
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 6
 --------------
 
 Query OK, 1 row affected
@@ -271,20 +283,51 @@ DO SLEEP(2)
 Query OK, 0 rows affected
 
 --------------
-UPDATE incident SET priority='HIGH' WHERE incident_id=3
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 3
 --------------
 
-ERROR 1213 (40001) at line 1: Deadlock found when trying to get lock; try restarting transaction
+ERROR 1213 (40001) at line 5: Deadlock found when trying to get lock; try restarting transaction
+
+================ 6.4a READ COMMITTED ================
+---------------- terminal A ----------------
 --------------
-(rehearsal ran B with --force, so it carried on after the deadlock: the SELECT below ran after B's transaction had already been rolled back)
-SELECT 'B got both rows' step
+SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED
 --------------
 
-+-----------------+
-| step            |
-+-----------------+
-| B got both rows |
-+-----------------+
+Query OK, 0 rows affected
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT status AS first_read FROM incident WHERE incident_id = 6
+--------------
+
++------------+
+| first_read |
++------------+
+| OPEN       |
++------------+
+1 row in set
+
+--------------
+DO SLEEP(2)
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT status AS second_read FROM incident WHERE incident_id = 6
+--------------
+
++---------------+
+| second_read   |
++---------------+
+| INVESTIGATING |
++---------------+
 1 row in set
 
 --------------
@@ -293,8 +336,152 @@ COMMIT
 
 Query OK, 0 rows affected
 
+---------------- terminal B ----------------
+--------------
+UPDATE incident SET status = 'INVESTIGATING' WHERE incident_id = 6
+--------------
 
-Final priority after 6.1: HIGH (one escalation lost). Audit rows for incident 6: root MEDIUM->HIGH, ananya.rao HIGH->HIGH.
-Final priority after 6.2: CRITICAL (B waited for A, then read HIGH).
-6.3 InnoDB status: *** WE ROLL BACK TRANSACTION (2)  (terminal B).
-6.4 READ COMMITTED: second read INVESTIGATING (non-repeatable read). REPEATABLE READ: second read OPEN.
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+
+================ 6.4b REPEATABLE READ ================
+---------------- terminal A ----------------
+--------------
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT status AS first_read FROM incident WHERE incident_id = 6
+--------------
+
++------------+
+| first_read |
++------------+
+| OPEN       |
++------------+
+1 row in set
+
+--------------
+DO SLEEP(2)
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT status AS second_read FROM incident WHERE incident_id = 6
+--------------
+
++-------------+
+| second_read |
++-------------+
+| OPEN        |
++-------------+
+1 row in set
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected
+
+---------------- terminal B ----------------
+--------------
+UPDATE incident SET status = 'INVESTIGATING' WHERE incident_id = 6
+--------------
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+
+================ 6.5 Two sessions add the same bad IP at once ================
+---------------- terminal A ----------------
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from) VALUES ('ip', '192.0.2.250', '2026-10-01', SYSDATE())
+--------------
+
+Query OK, 1 row affected
+
+--------------
+SELECT SYSDATE(6) AS a_inserted_at
+--------------
+
++----------------------------+
+| a_inserted_at              |
++----------------------------+
+| 2026-10-29 22:33:35.117892 |
++----------------------------+
+1 row in set
+
+--------------
+DO SLEEP(3)
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT SYSDATE(6) AS a_commits_at
+--------------
+
++----------------------------+
+| a_commits_at               |
++----------------------------+
+| 2026-10-29 22:33:38.128131 |
++----------------------------+
+1 row in set
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected
+
+---------------- terminal B ----------------
+--------------
+SELECT SYSDATE(6) AS b_starts_at
+--------------
+
++----------------------------+
+| b_starts_at                |
++----------------------------+
+| 2026-10-29 22:33:36.168092 |
++----------------------------+
+1 row in set
+
+--------------
+INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from) VALUES ('ip', '192.0.2.250', '2026-10-05', SYSDATE())
+--------------
+
+ERROR 1644 (45000) at line 2: An overlapping version of this indicator already exists
+--------------
+SELECT SYSDATE(6) AS b_rejected_at
+--------------
+
++----------------------------+
+| b_rejected_at              |
++----------------------------+
+| 2026-10-29 22:33:38.134808 |
++----------------------------+
+1 row in set
+
+
+================ InnoDB status after 6.3 ================
+TRANSACTION 10751, ACTIVE 3 sec starting index read
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 6
+TRANSACTION 10752, ACTIVE 2 sec starting index read
+UPDATE incident SET priority = 'HIGH' WHERE incident_id = 3
+*** WE ROLL BACK TRANSACTION (2)

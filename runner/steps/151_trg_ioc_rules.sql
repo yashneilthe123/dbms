@@ -22,6 +22,21 @@ BEGIN
     SET MESSAGE_TEXT = 'Indicator history is append-only; close it with recorded_to instead';
 END //
 
+-- the only change allowed to a version is closing it: recorded_to from NULL to a time
+CREATE TRIGGER trg_ioc_only_close
+BEFORE UPDATE ON ioc
+FOR EACH ROW
+BEGIN
+  IF NOT (NEW.ioc_version_id <=> OLD.ioc_version_id AND NEW.ioc_type <=> OLD.ioc_type
+          AND NEW.ioc_value <=> OLD.ioc_value AND NEW.actor_id <=> OLD.actor_id
+          AND NEW.malware_id <=> OLD.malware_id AND NEW.valid_from <=> OLD.valid_from
+          AND NEW.valid_to <=> OLD.valid_to AND NEW.recorded_from <=> OLD.recorded_from
+          AND OLD.recorded_to IS NULL AND NEW.recorded_to IS NOT NULL) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Indicator versions cannot be changed; only an open version can be closed';
+  END IF;
+END //
+
 CREATE TRIGGER trg_ioc_retro_hunt
 AFTER INSERT ON ioc
 FOR EACH ROW
@@ -29,7 +44,7 @@ BEGIN
   DECLARE v_run, v_hits, v_assets INT;
   IF NEW.ioc_type = 'ip' THEN
     INSERT INTO retro_hunt_run (ioc_version_id, started_at)
-    VALUES (NEW.ioc_version_id, NEW.recorded_from);
+    VALUES (NEW.ioc_version_id, SYSDATE());           -- when this search really ran
     SET v_run = LAST_INSERT_ID();
 
     -- every old log line from this IP while it was hostile but not yet known

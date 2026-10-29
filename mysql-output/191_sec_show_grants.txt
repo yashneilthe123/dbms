@@ -2,13 +2,29 @@
 SHOW GRANTS FOR 'sx_admin'
 --------------
 
-+---------------------------------------------------------------------------------------------+
-| Grants for sx_admin@%                                                                       |
-+---------------------------------------------------------------------------------------------+
-| GRANT USAGE ON *.* TO `sx_admin`@`%`                                                        |
-| GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE, SHOW VIEW ON `sentinelx`.* TO `sx_admin`@`%` |
-+---------------------------------------------------------------------------------------------+
-2 rows in set (0.00 sec)
++-------------------------------------------------------------------------------------+
+| Grants for sx_admin@%                                                               |
++-------------------------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `sx_admin`@`%`                                                |
+| GRANT SELECT, EXECUTE, SHOW VIEW ON `sentinelx`.* TO `sx_admin`@`%`                 |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`analyst` TO `sx_admin`@`%`             |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`asset_vulnerability` TO `sx_admin`@`%` |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`asset` TO `sx_admin`@`%`               |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`attack_event` TO `sx_admin`@`%`        |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`attack_type` TO `sx_admin`@`%`         |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`event_ioc` TO `sx_admin`@`%`           |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`incident_event` TO `sx_admin`@`%`      |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`incident` TO `sx_admin`@`%`            |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`ioc` TO `sx_admin`@`%`                 |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`malware` TO `sx_admin`@`%`             |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`mitigation` TO `sx_admin`@`%`          |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`network_log` TO `sx_admin`@`%`         |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`retro_hit` TO `sx_admin`@`%`           |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`retro_hunt_run` TO `sx_admin`@`%`      |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`threat_actor` TO `sx_admin`@`%`        |
+| GRANT INSERT, UPDATE, DELETE ON `sentinelx`.`vulnerability` TO `sx_admin`@`%`       |
++-------------------------------------------------------------------------------------+
+18 rows in set (0.00 sec)
 
 --------------
 SHOW GRANTS FOR 'sx_analyst'

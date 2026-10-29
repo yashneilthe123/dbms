@@ -15,8 +15,8 @@ Team note, delete before pasting into the report:
 The Review 2 report described more than the project contains. Sections 5.2, 6 and 19 and Fig. 1 listed a FastAPI
 backend, a React dashboard and machine-learning jobs written with pandas and scikit-learn. These were planned
 but never built, and none of them are in the repository. Fig. 1 also showed a Python ingestion pipeline and a dataset
-of 600,000 logs and 115,000 events. The only Python in the project generates the test data and the step files, and
-the dataset is 50,021 log lines and 30 attacks. We should have marked these parts as planned work, and we are
+of 600,000 logs and 115,000 events. The Python in the project only generates the test data and the step files and
+renders the captured output into figures, and the dataset is 50,021 log lines and 30 attacks. We should have marked these parts as planned work, and we are
 correcting that here.
 
 For Review 3 we have narrowed the scope to what a DBMS project should be judged on: the database design, the SQL,
@@ -27,10 +27,10 @@ decided by their role, not by an application.
 
 | Removed | Where Review 2 claimed it | Review 3 status |
 | --- | --- | --- |
-| FastAPI backend | 5.2, 6, 19 | Removed. Roles, views and procedures are the access layer (12.7). |
-| React SOC dashboard | 5.2, 7, 19, Fig. 1 | Removed. The "dashboard" module is the views `v_attack_details` and `v_asset_risk`. |
-| scikit-learn ML jobs | 5.2, 6, 9, 10, A7, C5 | Removed. The two columns they were meant to fill were changed (changes 12 and 13). |
-| Python ingestion / ETL | Fig. 1 | Never built. Test data comes from `tools/gen_seed.py` and a recursive CTE. |
+| FastAPI backend | 5.2 and 6 (p. 5), 19 (p. 74) | Dropped from scope. Roles, views and procedures are the access layer (12.7). |
+| React SOC dashboard | 5.2 (p. 5), 7 (p. 6), 19 (p. 75), Fig. 1 | Dropped from scope. The "Search and reporting" module is the views `v_attack_details` and `v_asset_risk`. |
+| scikit-learn ML jobs | 5.2 and 6 (p. 5), 9 (pp. 13-14), 10 (pp. 20-21), A7 (p. 25), C5 (p. 29) | Dropped from scope. The two columns they were meant to fill were changed (changes 12 and 13). |
+| Python ingestion / ETL | Fig. 1 (p. 5) | Never built. Test data comes from `tools/gen_seed.py` and a recursive CTE. |
 
 ## 1.2 Design changes since Review 2
 
@@ -42,17 +42,24 @@ Numbering continues from the Review 2 change log (changes 1 to 11).
 | 13 | `malware.cluster_id` dropped | Only the ML job would have filled it. Query C5 now self-joins `malware` on `actor_id` (pairs of malware used by the same threat actor). |
 | 14 | `01_ddl.sql` selects the database again after re-creating it | Run on its own, the script dropped the database it was using and stopped with ERROR 1046 at the first CREATE TABLE. Our runner hid this because it always passed `--database`. |
 | 15 | `sp_assign_incident` checks who is calling it | Our own testing found a privilege escalation. The procedure runs with its definer's rights, so an analyst could call it to hand his incident to a colleague, or take a colleague's incident. That is the change `WITH CHECK OPTION` blocks on `v_my_incidents`. The procedure now maps `USER()` (the caller, not `CURRENT_USER()`, which is the definer) to an analyst, and analysts may only claim unassigned incidents for themselves. |
-| 16 | Analyst role reads only views and runs only procedures | Review 2 granted analysts SELECT on ten base tables, plus INSERT on `ioc`, so views were not the only access path. Analysts now read indicators through the new view `v_ioc` and report them through the new procedure `sp_report_ioc`, which always sets `recorded_from` to the current time, so nobody can backdate when we learned about an indicator. |
+| 16 | Analyst role reads only views and runs only procedures | Review 2 granted analysts SELECT on ten base tables, plus INSERT on `ioc`, so views were not the only access path. Analysts now read indicators through the new view `v_ioc` and report them through the new procedure `sp_report_ioc`, which sets `recorded_from` from the real clock, so an analyst cannot backdate when we learned about an indicator (change 29). |
 | 17 | Accounts lock after 3 wrong passwords (`FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 1`) | Before this, any number of wrong passwords could be tried. |
-| 18 | New procedure `sp_load_log_batch` with an exit handler that rolls back | MySQL undoes only the failed statement, not the transaction. The Review 2 demo worked only because the script called ROLLBACK itself. Step 172 shows both behaviours. |
-| 19 | Four more EXPLAIN plans (step 183) | They show the leftmost-prefix rule (full index scan, and MySQL 8's skip scan as the alternative), a function on the column that hides the index, the same filter rewritten as a range read, and EXPLAIN ANALYZE with real timings. |
-| 20 | `13_tests.sql`: 49 automatic tests | 28 run as root, 11 as the analyst, 5 as the viewer and 5 as the admin. Each prints PASS or FAIL, and all 49 pass on a clean build. |
-| 21 | New table `incident_audit` with triggers on `incident` | Every UPDATE or DELETE of an incident is recorded with the account that made it (`USER()`), the time, and the old and new status, priority and owner. This happens whether the change came through a view, a procedure or a direct statement. `CURRENT_USER()` would always record root, the trigger's definer. The table has no foreign key, so the trail survives the incident being deleted. Two more triggers make it append-only. |
+| 18 | New procedure `sp_load_log_batch` with an exit handler that rolls back | MySQL undoes only the failed statement, not the transaction. The Review 2 demo worked only because the script called ROLLBACK itself. Section 13 shows both behaviours. |
+| 19 | Four more EXPLAIN plans (section 14.1) | They show the leftmost-prefix rule (full index scan, and MySQL 8's skip scan as the alternative), a function on the column that hides the index, the same filter rewritten as a range read, and EXPLAIN ANALYZE with real timings. |
+| 20 | `13_tests.sql`: 59 automatic tests | 35 run as root, 12 as the analyst, 5 as the viewer and 7 as the admin. Each prints PASS or FAIL, and all 59 pass on a clean build. |
+| 21 | New table `incident_audit` with triggers on `incident` | Every UPDATE or DELETE of an incident is recorded with the account that made it (`USER()`), the time, and the old and new status, priority and owner. This happens whether the change came through a view, a procedure or a direct statement. `CURRENT_USER()` would always record root, the trigger's definer. The table has no foreign key, so the trail survives the incident being deleted. Two more triggers make it append-only, and no role can write to it (change 28). |
 | 22 | `sx_admin` lost CREATE, ALTER, DROP and TRIGGER | Review 2 gave the admin role ALL PRIVILEGES, which included dropping the audit triggers or truncating the audit table (TRUNCATE does not fire triggers). Schema changes now stay with root, the DBA. |
-| 23 | SQL-injection demonstration (steps 196–198) | A search procedure built with CONCAT lets the analyst read every incident and every analyst's email, although he only holds EXECUTE: the injected SQL runs with the procedure's rights. The parameterised version is safe. The vulnerable procedure is dropped after the demonstration. |
+| 23 | SQL-injection demonstration (section 12.7) | A search procedure built with CONCAT lets the analyst read every incident and every analyst's email, although he only holds EXECUTE: the injected SQL runs with the procedure's rights. The parameterised version is safe. The vulnerable procedure is dropped after the demonstration. |
 | 24 | `trg_ioc_no_overlap` ignores versions closed with `recorded_to` | Found while building the demo. `trg_ioc_no_delete` tells users to close a version with `recorded_to`, but the overlap check still counted closed versions, so a corrected version could never be added. |
 | 25 | Backup and point-in-time recovery runbook (`demo/07_backup_recovery.md`) | Rehearsed with mysqldump and the binary log, stopping at the binlog position of the bad DELETE. |
 | 26 | Architecture figure redrawn (`tools/draw_architecture.py`) | The old Fig. 1 showed components that do not exist. |
+| 27 | Relational schema diagram redrawn from the DDL (`tools/draw_relational_schema.py`) | The hand-drawn Review 2 version still showed `event_time` and `log_time` inside primary keys, removed in Review 2 (change 10), and the two ML columns. |
+| 28 | `sx_admin` writes per data table; on `incident_audit` it only has SELECT | Found in our pre-submission review: with INSERT on the whole schema, the admin could add forged audit rows naming another user. The audit triggers still write, because they run with their definer's rights. |
+| 29 | `SYSDATE()` instead of `NOW()` in `sp_report_ioc`, the audit triggers and the retro-hunt | Any session can run `SET timestamp`, and `NOW()` follows it, so an analyst could backdate an indicator or an audit row. `SYSDATE()` reads the real clock. |
+| 30 | New trigger `trg_ioc_only_close` | Only DELETE was blocked, so an UPDATE could rewrite an indicator or reopen a closed version. The only change now allowed is closing an open version. |
+| 31 | `retro_hunt_run.started_at` is the time the search really ran | It was always a copy of the indicator's `recorded_from`, which made it redundant. |
+| 32 | `sp_search_incidents` refuses a caller it cannot match to an analyst | It read the caller's id into a session variable without clearing it, so an account with no analyst row could set the variable by hand and read another analyst's incidents. |
+| 33 | REVOKE shown by behaviour; normalisation and update anomaly shown on the data; updatability listed for all six views | The Review 3 template asks for before/after evidence and anomalies demonstrated, not only statements. |
 
 ## 1.3 Limitations (replaces Review 2 section 17)
 

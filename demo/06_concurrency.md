@@ -74,8 +74,8 @@ Prevention: always lock rows in the same order, for example lowest `incident_id`
 
 Repeat with `REPEATABLE READ`, MySQL's default. Step 3 then still says **OPEN**, because the transaction reads from its own snapshot.
 
-## 6.5 Our own triggers serialise too (talking point)
+## 6.5 Our own IOC trigger under concurrency
 
-When two sessions insert the same bad IP at the same moment, the second one waits about 3 seconds and is then rejected. The SELECT inside `trg_ioc_no_overlap` runs as part of an INSERT, so InnoDB makes it a locking read. The waiting session therefore sees the first row once it commits.
+When two sessions insert the same bad IP at the same moment, the second INSERT waits until the first transaction commits and is then rejected with ERROR 1644. The SELECT inside `trg_ioc_no_overlap` runs as part of an INSERT, so InnoDB makes it a locking read, and the waiting session sees the first row once it commits. In the rehearsal B started at :36.17 and was rejected at :38.13, 7 ms after A committed. With unlucky timing InnoDB could instead report a deadlock (ERROR 1213) and roll one session back; either way only one version is stored.
 
 Each scenario above was rehearsed on MySQL 8.0.46. The output is in `demo/evidence/concurrency.txt`.

@@ -13,4 +13,5 @@ UNION ALL SELECT 'incident_event', COUNT(*) FROM incident_event
 UNION ALL SELECT 'ioc', COUNT(*) FROM ioc
 UNION ALL SELECT 'event_ioc', COUNT(*) FROM event_ioc
 UNION ALL SELECT 'retro_hunt_run', COUNT(*) FROM retro_hunt_run
-UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit;
+UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit
+UNION ALL SELECT 'incident_audit', COUNT(*) FROM incident_audit;

@@ -54,14 +54,14 @@ INSERT INTO attack_event (event_time, src_ip, src_country, asset_id, type_id, se
 VALUES ('2026-10-27 22:20:00', '203.0.113.66', 'US', 3, 3, 8, 0)
 --------------
 
-Query OK, 1 row affected (0.01 sec)
+Query OK, 1 row affected (0.00 sec)
 
 --------------
 INSERT INTO attack_event (event_time, src_ip, src_country, asset_id, type_id, severity, blocked)
 VALUES ('2026-10-27 22:30:00', '203.0.113.66', 'US', 3, 4, 3, 1)
 --------------
 
-Query OK, 1 row affected (0.01 sec)
+Query OK, 1 row affected (0.00 sec)
 
 --------------
 SELECT i.incident_id, i.title, i.priority, i.status, COUNT(ie.event_id) AS attacks

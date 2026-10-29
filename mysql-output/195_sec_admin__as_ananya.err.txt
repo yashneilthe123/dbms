@@ -1,3 +1,4 @@
-ERROR 1644 (45000) at line 12: The audit trail is append-only
-ERROR 1142 (42000) at line 13: DROP command denied to user 'ananya.rao'@'localhost' for table 'incident_audit'
-ERROR 1142 (42000) at line 14: TRIGGER command denied to user 'ananya.rao'@'localhost' for table 'incident_audit'
+ERROR 1142 (42000) at line 12: DELETE command denied to user 'ananya.rao'@'localhost' for table 'incident_audit'
+ERROR 1142 (42000) at line 13: INSERT command denied to user 'ananya.rao'@'localhost' for table 'incident_audit'
+ERROR 1142 (42000) at line 14: DROP command denied to user 'ananya.rao'@'localhost' for table 'incident_audit'
+ERROR 1142 (42000) at line 15: TRIGGER command denied to user 'ananya.rao'@'localhost' for table 'incident_audit'

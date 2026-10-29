@@ -1,0 +1,1 @@
+ERROR 1142 (42000) at line 2: SELECT command denied to user 'divya.iyer'@'localhost' for table 'network_log'

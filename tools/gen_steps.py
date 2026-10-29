@@ -51,6 +51,22 @@ VALUES ('2026-10-27 10:00:00', '203.0.113.5', 'US', 1, 99, 5, 1);
 DELETE FROM asset WHERE asset_id = 1;
 INSERT INTO incident (title, priority, status, closed_at) VALUES ('Test', 'LOW', 'OPEN', '2026-10-27 10:00:00');
 """)
+step('037_dml_normalisation_check', """
+-- functional dependency mitre_technique -> type_id: no technique maps to two attack types (empty result)
+SELECT mitre_technique, COUNT(DISTINCT type_id) AS types
+FROM attack_type GROUP BY mitre_technique HAVING COUNT(DISTINCT type_id) > 1;
+
+-- update anomaly: copy attacks and their asset's criticality into one flat table, as before 3NF
+CREATE TEMPORARY TABLE flat_attack AS
+SELECT e.event_id, a.hostname, a.criticality FROM attack_event e JOIN asset a ON a.asset_id = e.asset_id;
+UPDATE flat_attack SET criticality = 1 WHERE event_id = 1;
+SELECT hostname, GROUP_CONCAT(DISTINCT criticality ORDER BY criticality) AS criticality_values
+FROM flat_attack WHERE hostname = 'web-01' GROUP BY hostname;
+DROP TEMPORARY TABLE flat_attack;
+
+-- in the normalised schema the fact is stored once, so it cannot disagree with itself
+SELECT hostname, criticality FROM asset WHERE hostname = 'web-01';
+""")
 step('036_dml_row_counts', """
 SELECT 'asset' AS table_name, COUNT(*) AS row_count FROM asset
 UNION ALL SELECT 'vulnerability', COUNT(*) FROM vulnerability
@@ -67,7 +83,8 @@ UNION ALL SELECT 'incident_event', COUNT(*) FROM incident_event
 UNION ALL SELECT 'ioc', COUNT(*) FROM ioc
 UNION ALL SELECT 'event_ioc', COUNT(*) FROM event_ioc
 UNION ALL SELECT 'retro_hunt_run', COUNT(*) FROM retro_hunt_run
-UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit;
+UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit
+UNION ALL SELECT 'incident_audit', COUNT(*) FROM incident_audit;
 """)
 
 # ---------------- A. Basic ----------------
@@ -591,6 +608,10 @@ FROM ioc
 WHERE recorded_to IS NULL;
 
 SELECT ioc_type, COUNT(*) AS indicators FROM v_ioc GROUP BY ioc_type ORDER BY ioc_type;
+
+-- updatable or not, for every view in the schema
+SELECT table_name AS view_name, is_updatable
+FROM information_schema.views WHERE table_schema = 'sentinelx' ORDER BY table_name;
 """)
 
 # ---------------- Functions ----------------
@@ -715,13 +736,14 @@ CALL sp_attack_report('2026-10-01', '2026-10-15');
 """)
 step('142_proc_report_ioc', """
 -- analysts add indicators through this procedure instead of writing to the ioc table;
--- recorded_from is always "now", so nobody can backdate when we learned about it
+-- recorded_from is the real clock (SYSDATE, not NOW: NOW follows a session's SET timestamp,
+-- which any user may change), so an analyst cannot backdate when we learned about it
 DELIMITER //
 CREATE PROCEDURE sp_report_ioc(IN p_type VARCHAR(6), IN p_value VARCHAR(255),
                                IN p_valid_from DATETIME, IN p_actor INT, IN p_malware INT)
 BEGIN
   INSERT INTO ioc (ioc_type, ioc_value, actor_id, malware_id, valid_from, recorded_from)
-  VALUES (p_type, p_value, p_actor, p_malware, p_valid_from, NOW());
+  VALUES (p_type, p_value, p_actor, p_malware, p_valid_from, SYSDATE());
   SELECT ioc_version_id, ioc_type, ioc_value, valid_from, recorded_from
   FROM ioc WHERE ioc_version_id = LAST_INSERT_ID();
 END //
@@ -809,6 +831,21 @@ BEGIN
     SET MESSAGE_TEXT = 'Indicator history is append-only; close it with recorded_to instead';
 END //
 
+-- the only change allowed to a version is closing it: recorded_to from NULL to a time
+CREATE TRIGGER trg_ioc_only_close
+BEFORE UPDATE ON ioc
+FOR EACH ROW
+BEGIN
+  IF NOT (NEW.ioc_version_id <=> OLD.ioc_version_id AND NEW.ioc_type <=> OLD.ioc_type
+          AND NEW.ioc_value <=> OLD.ioc_value AND NEW.actor_id <=> OLD.actor_id
+          AND NEW.malware_id <=> OLD.malware_id AND NEW.valid_from <=> OLD.valid_from
+          AND NEW.valid_to <=> OLD.valid_to AND NEW.recorded_from <=> OLD.recorded_from
+          AND OLD.recorded_to IS NULL AND NEW.recorded_to IS NOT NULL) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Indicator versions cannot be changed; only an open version can be closed';
+  END IF;
+END //
+
 CREATE TRIGGER trg_ioc_retro_hunt
 AFTER INSERT ON ioc
 FOR EACH ROW
@@ -816,7 +853,7 @@ BEGIN
   DECLARE v_run, v_hits, v_assets INT;
   IF NEW.ioc_type = 'ip' THEN
     INSERT INTO retro_hunt_run (ioc_version_id, started_at)
-    VALUES (NEW.ioc_version_id, NEW.recorded_from);
+    VALUES (NEW.ioc_version_id, SYSDATE());           -- when this search really ran
     SET v_run = LAST_INSERT_ID();
 
     -- every old log line from this IP while it was hostile but not yet known
@@ -859,6 +896,7 @@ INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from)
 VALUES ('ip', '198.51.100.77', '2026-10-01 00:00:00', '2026-10-28 11:00:00');
 
 DELETE FROM ioc WHERE ioc_value = '198.51.100.77';
+UPDATE ioc SET ioc_value = '198.51.100.78' WHERE ioc_value = '198.51.100.77';
 """)
 step('153_trg_audit', """
 -- every change to an incident is written to incident_audit by the database itself,
@@ -868,11 +906,12 @@ CREATE TRIGGER trg_incident_audit_update
 AFTER UPDATE ON incident
 FOR EACH ROW
 BEGIN
-  INSERT INTO incident_audit (incident_id, action, changed_by,
+  INSERT INTO incident_audit (incident_id, action, changed_by, changed_at,
                               old_status, new_status, old_priority, new_priority,
                               old_assigned_to, new_assigned_to)
   VALUES (OLD.incident_id, 'UPDATE', USER(),     -- USER(), not CURRENT_USER(): inside a trigger
-          OLD.status, NEW.status,                -- CURRENT_USER() is the trigger's definer (root)
+          SYSDATE(6),                            -- CURRENT_USER() is the trigger's definer (root);
+          OLD.status, NEW.status,                -- SYSDATE(), unlike NOW(), ignores SET timestamp
           OLD.priority, NEW.priority,
           OLD.assigned_to, NEW.assigned_to);
 END //
@@ -881,9 +920,9 @@ CREATE TRIGGER trg_incident_audit_delete
 AFTER DELETE ON incident
 FOR EACH ROW
 BEGIN
-  INSERT INTO incident_audit (incident_id, action, changed_by,
+  INSERT INTO incident_audit (incident_id, action, changed_by, changed_at,
                               old_status, old_priority, old_assigned_to)
-  VALUES (OLD.incident_id, 'DELETE', USER(), OLD.status, OLD.priority, OLD.assigned_to);
+  VALUES (OLD.incident_id, 'DELETE', USER(), SYSDATE(6), OLD.status, OLD.priority, OLD.assigned_to);
 END //
 
 -- the trail itself is append-only
@@ -1115,8 +1154,25 @@ CREATE ROLE 'sx_admin', 'sx_analyst', 'sx_viewer';
 
 -- the admin works with the data but cannot change the schema: no CREATE, ALTER, DROP,
 -- TRIGGER or GRANT OPTION, so no TRUNCATE (needs DROP) and no dropping the audit triggers.
--- Schema changes stay with root, the DBA.
-GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE, SHOW VIEW ON sentinelx.* TO 'sx_admin';
+-- Schema changes stay with root, the DBA. Writes are granted per data table, so the admin
+-- can only read incident_audit: the audit triggers write it with their definer's rights.
+GRANT SELECT, EXECUTE, SHOW VIEW ON sentinelx.* TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.asset                TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.vulnerability        TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.asset_vulnerability  TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.network_log          TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.attack_type          TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.mitigation           TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.threat_actor         TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.malware              TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.attack_event         TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.analyst              TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.incident             TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.incident_event       TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.ioc                  TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.event_ioc            TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.retro_hunt_run       TO 'sx_admin';
+GRANT INSERT, UPDATE, DELETE ON sentinelx.retro_hit            TO 'sx_admin';
 
 -- analysts reach data only through views and procedures: no base table at all
 GRANT SELECT ON sentinelx.v_attack_details     TO 'sx_analyst';
@@ -1155,12 +1211,21 @@ SHOW GRANTS FOR 'rahul.mehta'@'localhost';
 SHOW GRANTS FOR 'rahul.mehta'@'localhost' USING 'sx_analyst';
 SHOW GRANTS FOR 'divya.iyer'@'localhost' USING 'sx_viewer';
 """)
-step('192_sec_revoke', """
+step('192_sec_revoke_1_grant', """
 GRANT SELECT ON sentinelx.network_log TO 'sx_viewer';
 SHOW GRANTS FOR 'sx_viewer';
-
+""")
+step('192_sec_revoke_2__as_divya', """
+-- a new divya session while the extra grant exists
+SELECT COUNT(*) AS log_lines FROM network_log;
+""")
+step('192_sec_revoke_3_revoke', """
 REVOKE SELECT ON sentinelx.network_log FROM 'sx_viewer';
 SHOW GRANTS FOR 'sx_viewer';
+""")
+step('192_sec_revoke_4__as_divya', """
+-- a new divya session after the REVOKE
+SELECT COUNT(*) AS log_lines FROM network_log;
 """)
 step('193_sec_viewer__as_divya', """
 SELECT CURRENT_USER() AS logged_in_as, CURRENT_ROLE() AS active_role;
@@ -1214,8 +1279,9 @@ SELECT audit_id, incident_id, changed_by, old_status, new_status,
 FROM incident_audit
 ORDER BY audit_id;
 
--- the admin cannot erase it: no DELETE (trigger), no TRUNCATE (needs DROP), no DROP TRIGGER
+-- the admin cannot erase or forge it: no DELETE or INSERT on it, no TRUNCATE (needs DROP), no DROP TRIGGER
 DELETE FROM incident_audit WHERE audit_id = 1;
+INSERT INTO incident_audit (incident_id, action, changed_by) VALUES (7, 'UPDATE', 'rahul.mehta@localhost');
 TRUNCATE TABLE incident_audit;
 DROP TRIGGER trg_audit_no_delete;
 """)
@@ -1238,8 +1304,13 @@ END //
 
 CREATE PROCEDURE sp_search_incidents(IN p_text VARCHAR(100))
 BEGIN
+  -- @me is a session variable the caller could set, so clear it and insist on a real analyst
+  SET @me = NULL;
   SELECT analyst_id INTO @me FROM analyst
    WHERE email = CONCAT(SUBSTRING_INDEX(USER(), '@', 1), '@sentinelx.in');
+  IF @me IS NULL THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Caller is not a registered analyst';
+  END IF;
   SET @text = p_text;
   PREPARE st FROM 'SELECT incident_id, title, priority, status, assigned_to FROM incident
                    WHERE assigned_to = ? AND title LIKE CONCAT(''%'', ?, ''%'')';
@@ -1391,6 +1462,30 @@ CALL sp_check('T26', 'injectable procedure was removed', '0',
 CALL sp_check('T27', 'admin role has no CREATE/ALTER/DROP/TRIGGER', '0',
   (SELECT COUNT(*) FROM information_schema.schema_privileges
     WHERE grantee = "'sx_admin'@'%'" AND privilege_type IN ('CREATE', 'ALTER', 'DROP', 'TRIGGER')));
+CALL sp_check('T29', 'all three accounts lock after 3 failed logins', '3',
+  (SELECT COUNT(*) FROM mysql.user WHERE user IN ('ananya.rao', 'rahul.mehta', 'divya.iyer')
+     AND JSON_EXTRACT(user_attributes, '$.Password_locking.failed_login_attempts') = 3));
+CALL sp_check('T30', 'escalation cursor raised incident 6 from MEDIUM to HIGH', '1',
+  (SELECT COUNT(*) FROM incident_audit WHERE incident_id = 6 AND old_priority = 'MEDIUM'
+     AND new_priority = 'HIGH' AND changed_by LIKE 'root@%'));
+CALL sp_check('T31', 'fn_asset_risk matches its formula for every asset', '0',
+  (SELECT COUNT(*) FROM asset a
+    WHERE fn_asset_risk(a.asset_id) <> a.criticality * 10
+          + 5 * (SELECT COUNT(*) FROM asset_vulnerability av WHERE av.asset_id = a.asset_id AND av.patched_at IS NULL)
+          + 2 * (SELECT COUNT(*) FROM attack_event e WHERE e.asset_id = a.asset_id AND e.blocked = 0)));
+CALL sp_expect_error('T32', 'an IOC version cannot be rewritten',
+  "UPDATE ioc SET ioc_value = '198.51.100.99' WHERE ioc_version_id = 1", 1644);
+START TRANSACTION;
+UPDATE ioc SET recorded_to = SYSDATE() WHERE ioc_version_id = 12;
+CALL sp_expect_error('T33', 'a closed IOC version cannot be reopened',
+  "UPDATE ioc SET recorded_to = NULL WHERE ioc_version_id = 12", 1644);
+ROLLBACK;
+CALL sp_check('T34', 'admin has no write privilege on incident_audit', '0',
+  (SELECT COUNT(*) FROM information_schema.table_privileges
+    WHERE grantee = "'sx_admin'@'%'" AND table_name = 'incident_audit'));
+SET @me = 2;  -- pretend to be rahul by setting the session variable the procedure uses
+CALL sp_expect_error('T35', 'search procedure ignores a forged @me (root is no analyst)',
+  "CALL sp_search_incidents('Brute')", 1644);
 
 SELECT @tests_pass AS passed, @tests_fail AS failed;
 """)
@@ -1418,6 +1513,12 @@ CALL sp_expect_error('S10', 'analyst reports an IOC through the procedure',
   "CALL sp_report_ioc('ip', '192.0.2.200', '2026-10-01', NULL, NULL)", 0);
 CALL sp_expect_error('S11', 'analyst cannot read the audit trail',
   "DO (SELECT COUNT(*) FROM incident_audit)", 1142);
+-- try to backdate an indicator by moving this session's clock
+SET timestamp = UNIX_TIMESTAMP('2026-01-01 00:00:00');
+CALL sp_report_ioc('ip', '192.0.2.201', '2026-10-01', NULL, NULL);
+SET timestamp = DEFAULT;
+CALL sp_check('S12', 'SET timestamp cannot backdate a reported IOC', '0',
+  (SELECT COUNT(*) FROM v_ioc WHERE ioc_value = '192.0.2.201' AND recorded_from < '2026-02-01'));
 SELECT @tests_pass AS passed, @tests_fail AS failed;
 """)
 step('202_tests__as_divya', """
@@ -1441,11 +1542,15 @@ CALL sp_expect_error('A01', 'admin can change incident data',
 CALL sp_check('A02', '... and the audit trail names the admin', 'ananya.rao',
   (SELECT SUBSTRING_INDEX(changed_by, '@', 1) FROM incident_audit ORDER BY audit_id DESC LIMIT 1));
 CALL sp_expect_error('A03', 'admin cannot delete audit rows',
-  "DELETE FROM incident_audit WHERE audit_id = 1", 1644);
+  "DELETE FROM incident_audit WHERE audit_id = 1", 1142);
 CALL sp_expect_error('A04', 'admin cannot TRUNCATE the audit trail',
   "TRUNCATE TABLE incident_audit", 1142);
 CALL sp_expect_error('A05', 'admin cannot change the schema',
   "ALTER TABLE incident ADD COLUMN note VARCHAR(10)", 1142);
+CALL sp_expect_error('A06', 'admin cannot forge an audit row',
+  "INSERT INTO incident_audit (incident_id, action, changed_by) VALUES (7, 'UPDATE', 'rahul.mehta@localhost')", 1142);
+CALL sp_expect_error('A07', 'admin cannot edit an audit row',
+  "UPDATE incident_audit SET changed_by = 'nobody' WHERE audit_id = 1", 1142);
 SELECT @tests_pass AS passed, @tests_fail AS failed;
 """)
 

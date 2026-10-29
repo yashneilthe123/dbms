@@ -77,6 +77,21 @@ BEGIN
     SET MESSAGE_TEXT = 'Indicator history is append-only; close it with recorded_to instead';
 END //
 
+-- the only change allowed to a version is closing it: recorded_to from NULL to a time
+CREATE TRIGGER trg_ioc_only_close
+BEFORE UPDATE ON ioc
+FOR EACH ROW
+BEGIN
+  IF NOT (NEW.ioc_version_id <=> OLD.ioc_version_id AND NEW.ioc_type <=> OLD.ioc_type
+          AND NEW.ioc_value <=> OLD.ioc_value AND NEW.actor_id <=> OLD.actor_id
+          AND NEW.malware_id <=> OLD.malware_id AND NEW.valid_from <=> OLD.valid_from
+          AND NEW.valid_to <=> OLD.valid_to AND NEW.recorded_from <=> OLD.recorded_from
+          AND OLD.recorded_to IS NULL AND NEW.recorded_to IS NOT NULL) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Indicator versions cannot be changed; only an open version can be closed';
+  END IF;
+END //
+
 CREATE TRIGGER trg_ioc_retro_hunt
 AFTER INSERT ON ioc
 FOR EACH ROW
@@ -84,7 +99,7 @@ BEGIN
   DECLARE v_run, v_hits, v_assets INT;
   IF NEW.ioc_type = 'ip' THEN
     INSERT INTO retro_hunt_run (ioc_version_id, started_at)
-    VALUES (NEW.ioc_version_id, NEW.recorded_from);
+    VALUES (NEW.ioc_version_id, SYSDATE());           -- when this search really ran
     SET v_run = LAST_INSERT_ID();
 
     -- every old log line from this IP while it was hostile but not yet known
@@ -128,6 +143,7 @@ INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from)
 VALUES ('ip', '198.51.100.77', '2026-10-01 00:00:00', '2026-10-28 11:00:00');
 
 DELETE FROM ioc WHERE ioc_value = '198.51.100.77';
+UPDATE ioc SET ioc_value = '198.51.100.78' WHERE ioc_value = '198.51.100.77';
 
 
 -- ---- trg_audit ----
@@ -138,11 +154,12 @@ CREATE TRIGGER trg_incident_audit_update
 AFTER UPDATE ON incident
 FOR EACH ROW
 BEGIN
-  INSERT INTO incident_audit (incident_id, action, changed_by,
+  INSERT INTO incident_audit (incident_id, action, changed_by, changed_at,
                               old_status, new_status, old_priority, new_priority,
                               old_assigned_to, new_assigned_to)
   VALUES (OLD.incident_id, 'UPDATE', USER(),     -- USER(), not CURRENT_USER(): inside a trigger
-          OLD.status, NEW.status,                -- CURRENT_USER() is the trigger's definer (root)
+          SYSDATE(6),                            -- CURRENT_USER() is the trigger's definer (root);
+          OLD.status, NEW.status,                -- SYSDATE(), unlike NOW(), ignores SET timestamp
           OLD.priority, NEW.priority,
           OLD.assigned_to, NEW.assigned_to);
 END //
@@ -151,9 +168,9 @@ CREATE TRIGGER trg_incident_audit_delete
 AFTER DELETE ON incident
 FOR EACH ROW
 BEGIN
-  INSERT INTO incident_audit (incident_id, action, changed_by,
+  INSERT INTO incident_audit (incident_id, action, changed_by, changed_at,
                               old_status, old_priority, old_assigned_to)
-  VALUES (OLD.incident_id, 'DELETE', USER(), OLD.status, OLD.priority, OLD.assigned_to);
+  VALUES (OLD.incident_id, 'DELETE', USER(), SYSDATE(6), OLD.status, OLD.priority, OLD.assigned_to);
 END //
 
 -- the trail itself is append-only

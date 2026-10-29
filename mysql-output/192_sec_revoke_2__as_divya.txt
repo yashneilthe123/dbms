@@ -1,0 +1,12 @@
+--------------
+SELECT COUNT(*) AS log_lines FROM network_log
+--------------
+
++-----------+
+| log_lines |
++-----------+
+|     50021 |
++-----------+
+1 row in set (0.01 sec)
+
+Bye

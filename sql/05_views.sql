@@ -90,3 +90,7 @@ FROM ioc
 WHERE recorded_to IS NULL;
 
 SELECT ioc_type, COUNT(*) AS indicators FROM v_ioc GROUP BY ioc_type ORDER BY ioc_type;
+
+-- updatable or not, for every view in the schema
+SELECT table_name AS view_name, is_updatable
+FROM information_schema.views WHERE table_schema = 'sentinelx' ORDER BY table_name;

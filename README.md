@@ -6,7 +6,7 @@ incidents and analysts are stored once, linked properly, and searched with plain
 
 - **16 tables in Third Normal Form (3NF)** plus an append-only audit trail, MySQL 8.0
 - **Everything here was actually run** on MySQL 8.0.46. The raw client output is in [`mysql-output/`](mysql-output)
-- **49 automatic tests**, run as root, analyst, viewer and admin; all pass on a clean build
+- **59 automatic tests**, run as root, analyst, viewer and admin; all pass on a clean build
 - The project is the database: there is no application layer. See [`reports/Review3_scope_revision.md`](reports/Review3_scope_revision.md) for what was removed since Review 2 and why.
 - Two features of our own:
   - **Retro-hunt:** when a new bad IP is added, a trigger searches old logs for the time it was already hostile but not yet known, and opens an incident if it finds anything.
@@ -38,14 +38,14 @@ The relational schema with every foreign key is in [`diagrams/relational_schema.
 | --- | --- |
 | DDL | 16 tables plus `incident_audit`, with PRIMARY KEY, FOREIGN KEY (CASCADE / SET NULL), UNIQUE, CHECK, ENUM, indexes |
 | DML | 10 assets, 30 attacks, 12 IOCs, 7 incidents, 50,021 log lines (50,000 generated with a recursive CTE), UPDATE, DELETE, and 5 statements rejected by constraints |
-| Queries | 40 queries: basic, aggregate (WHERE vs HAVING), all join types (FULL OUTER emulated), subqueries (incl. the NOT IN + NULL pitfall), UNION / INTERSECT / EXCEPT, CASE / COALESCE / NULLIF / date / string / numeric, window functions |
+| Queries | 41 queries: basic, aggregate (WHERE vs HAVING), all join types (FULL OUTER emulated), subqueries (incl. the NOT IN + NULL pitfall), UNION / INTERSECT / EXCEPT, CASE / COALESCE / NULLIF / date / string / numeric, window functions |
 | Complex queries | 11 multi-table business queries (CQ-01 to CQ-11) |
 | Views | `v_attack_details` (5-table join), `v_asset_risk` (aggregated), `v_my_incidents` (row-level security, WITH CHECK OPTION), `v_vulnerability`, `v_retro_hunt_summary`, `v_ioc` |
 | Routines | `fn_severity_label`, `fn_asset_risk`; `sp_assign_incident` (SELECT ... FOR UPDATE, SIGNAL, ROLLBACK, checks its caller), `sp_attack_report`, `sp_report_ioc`, `sp_load_log_batch`, `sp_whoami` |
 | Triggers | `trg_attack_auto_incident`, `trg_ioc_retro_hunt`, `trg_ioc_no_overlap`, `trg_ioc_no_delete`, `trg_incident_audit_update/delete`, `trg_audit_no_update/delete` |
 | Cursors | `sp_escalate_incidents`, `sp_asset_risk_report` |
 | Transactions | SAVEPOINT / ROLLBACK TO / COMMIT; a failed statement does not roll back a transaction, an exit handler does; lost update, FOR UPDATE, deadlock and isolation levels in two terminals |
-| Indexes | EXPLAIN before and after `idx_src_time`: full scan of 50,163 rows down to a range read of 8; leftmost prefix and skip scan; an index hidden by a function; EXPLAIN ANALYZE |
+| Indexes | EXPLAIN before and after `idx_src_time`: full scan of about 50,000 rows (MySQL's estimate) down to a range read of 8; leftmost prefix and skip scan; an index hidden by a function; EXPLAIN ANALYZE |
 | Security | Roles `sx_admin`, `sx_analyst`, `sx_viewer`; analysts and viewers reach data only through views and procedures; GRANT / REVOKE; lockout after 3 wrong passwords; append-only audit trail; SQL injection, unsafe vs parameterised; backup and point-in-time recovery |
 
 ## Run it yourself
