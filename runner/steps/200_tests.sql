@@ -77,6 +77,12 @@ CALL sp_expect_error('T14', 'overlapping IOC version is rejected',
   "INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from) VALUES ('ip', '198.51.100.77', '2026-10-01', '2026-10-28 11:00:00')", 1644);
 CALL sp_expect_error('T15', 'IOC history is append-only',
   "DELETE FROM ioc WHERE ioc_value = '198.51.100.77'", 1644);
+
+START TRANSACTION;
+UPDATE ioc SET recorded_to = NOW() WHERE ioc_value = '198.51.100.77' AND recorded_to IS NULL;
+CALL sp_expect_error('T28', 'a closed IOC version can be replaced by a new one',
+  "INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from) VALUES ('ip', '198.51.100.77', '2026-09-10', NOW())", 0);
+ROLLBACK;
 CALL sp_check('T16', 'fn_severity_label(9.8), (6.5)', 'CRITICAL/MEDIUM',
   CONCAT(fn_severity_label(9.8), '/', fn_severity_label(6.5)));
 CALL sp_expect_error('T17', 'cannot assign a closed incident',

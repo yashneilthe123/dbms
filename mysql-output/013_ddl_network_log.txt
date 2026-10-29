@@ -12,6 +12,6 @@ CREATE TABLE network_log (
 )
 --------------
 
-Query OK, 0 rows affected (0.06 sec)
+Query OK, 0 rows affected (0.05 sec)
 
 Bye

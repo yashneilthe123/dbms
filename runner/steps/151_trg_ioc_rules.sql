@@ -6,6 +6,7 @@ BEGIN
   IF EXISTS (SELECT 1 FROM ioc
              WHERE ioc_type = NEW.ioc_type
                AND ioc_value = NEW.ioc_value
+               AND recorded_to IS NULL               -- versions closed with recorded_to are history
                AND (valid_to IS NULL OR valid_to > NEW.valid_from)
                AND (NEW.valid_to IS NULL OR NEW.valid_to > valid_from)) THEN
     SIGNAL SQLSTATE '45000'

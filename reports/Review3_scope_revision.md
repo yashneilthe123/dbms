@@ -42,11 +42,17 @@ Numbering continues from the Review 2 change log (changes 1 to 11).
 | 13 | `malware.cluster_id` dropped | Only the ML job would have filled it. Query C5 now self-joins `malware` on `actor_id` (pairs of malware used by the same threat actor). |
 | 14 | `01_ddl.sql` selects the database again after re-creating it | Run on its own, the script dropped the database it was using and stopped with ERROR 1046 at the first CREATE TABLE. Our runner hid this because it always passed `--database`. |
 | 15 | `sp_assign_incident` checks who is calling it | Our own testing found a privilege escalation. The procedure runs with its definer's rights, so an analyst could call it to hand his incident to a colleague, or take a colleague's incident. That is the change `WITH CHECK OPTION` blocks on `v_my_incidents`. The procedure now maps `USER()` (the caller, not `CURRENT_USER()`, which is the definer) to an analyst, and analysts may only claim unassigned incidents for themselves. |
-| 16 | Analyst role reads only views and runs only procedures | Review 2 granted analysts SELECT on ten base tables, so views were not the only access path. The one base table analysts still write is `ioc`, whose history is protected by `trg_ioc_no_overlap` and `trg_ioc_no_delete`. |
+| 16 | Analyst role reads only views and runs only procedures | Review 2 granted analysts SELECT on ten base tables, plus INSERT on `ioc`, so views were not the only access path. Analysts now read indicators through the new view `v_ioc` and report them through the new procedure `sp_report_ioc`, which always sets `recorded_from` to the current time, so nobody can backdate when we learned about an indicator. |
 | 17 | Accounts lock after 3 wrong passwords (`FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 1`) | Before this, any number of wrong passwords could be tried. |
 | 18 | New procedure `sp_load_log_batch` with an exit handler that rolls back | MySQL undoes only the failed statement, not the transaction. The Review 2 demo worked only because the script called ROLLBACK itself. Step 172 shows both behaviours. |
 | 19 | Four more EXPLAIN plans (step 183) | They show the leftmost-prefix rule (full index scan, and MySQL 8's skip scan as the alternative), a function on the column that hides the index, the same filter rewritten as a range read, and EXPLAIN ANALYZE with real timings. |
-| 20 | `13_tests.sql`: 35 automatic tests | 22 run as root, 8 as the analyst and 5 as the viewer. Each prints PASS or FAIL, and all 35 pass on a clean build. |
+| 20 | `13_tests.sql`: 49 automatic tests | 28 run as root, 11 as the analyst, 5 as the viewer and 5 as the admin. Each prints PASS or FAIL, and all 49 pass on a clean build. |
+| 21 | New table `incident_audit` with triggers on `incident` | Every UPDATE or DELETE of an incident is recorded with the account that made it (`USER()`), the time, and the old and new status, priority and owner. This happens whether the change came through a view, a procedure or a direct statement. `CURRENT_USER()` would always record root, the trigger's definer. The table has no foreign key, so the trail survives the incident being deleted. Two more triggers make it append-only. |
+| 22 | `sx_admin` lost CREATE, ALTER, DROP and TRIGGER | Review 2 gave the admin role ALL PRIVILEGES, which included dropping the audit triggers or truncating the audit table (TRUNCATE does not fire triggers). Schema changes now stay with root, the DBA. |
+| 23 | SQL-injection demonstration (steps 196–198) | A search procedure built with CONCAT lets the analyst read every incident and every analyst's email, although he only holds EXECUTE: the injected SQL runs with the procedure's rights. The parameterised version is safe. The vulnerable procedure is dropped after the demonstration. |
+| 24 | `trg_ioc_no_overlap` ignores versions closed with `recorded_to` | Found while building the demo. `trg_ioc_no_delete` tells users to close a version with `recorded_to`, but the overlap check still counted closed versions, so a corrected version could never be added. |
+| 25 | Backup and point-in-time recovery runbook (`demo/07_backup_recovery.md`) | Rehearsed with mysqldump and the binary log, stopping at the binlog position of the bad DELETE. |
+| 26 | Architecture figure redrawn (`tools/draw_architecture.py`) | The old Fig. 1 showed components that do not exist. |
 
 ## 1.3 Limitations (replaces Review 2 section 17)
 
@@ -62,9 +68,9 @@ Numbering continues from the Review 2 change log (changes 1 to 11).
 | Review 2 section | Edit |
 | --- | --- |
 | 5.2 Software | Remove FastAPI, pandas, scikit-learn, Node.js, React and Vite. Keep MySQL 8.0.46, Workbench, draw.io, Git, and Python 3 for the generator scripts in `tools/`. |
-| 6 Architecture, Fig. 1 | Redraw: data sources and test-data generator → MySQL (tables, triggers, procedures, views, roles) → three users through the `mysql` client. Delete the sentence about the FastAPI backend and the ML jobs. |
-| 7 Modules | Rename "Dashboard and search" to "Search and reporting". |
-| 8 ER diagram, relational schema | Remove `cluster_id` from MALWARE. Rename `predicted_severity` to `triage_priority` on ATTACK_EVENT. |
+| 6 Architecture, Fig. 1 | Replace with the new `diagrams/architecture.png`. Delete the sentence about the FastAPI backend and the ML jobs. |
+| 7 Modules | Rename "Dashboard and search" to "Search and reporting". Add "Audit trail" (`incident_audit`, its triggers). |
+| 8 ER diagram, relational schema | Remove `cluster_id` from MALWARE. Rename `predicted_severity` to `triage_priority` on ATTACK_EVENT. Add INCIDENT_AUDIT: it has no relationship line, because it deliberately has no foreign key. These two PNGs were drawn by hand in draw.io and still need this edit. |
 | 9 Tables (p. 13–14) | Update the `malware` and `attack_event` attribute tables and the Fig. 11 / Fig. 12 screenshots. |
 | 10 UPDATE demo (p. 20–21) | The analyst triages attacks 25 and 26. New Fig. 22 from `mysql-output/033_dml_update.txt`. |
 | 11 A7, C5 (p. 25, 29) | New titles and screenshots from `mysql-output/047_A7.txt` and `065_C5.txt`. |
@@ -73,7 +79,8 @@ Numbering continues from the Review 2 change log (changes 1 to 11).
 | 14 Indexes | Add step 183. |
 | 17 Limitations | Replace with 1.3 above. |
 | 19 Work breakdown | Remove "FastAPI backend" and "React dashboard". See section 3. |
-| New | Testing chapter built from `mysql-output/200_tests.txt`, `201_tests__as_rahul.txt` and `202_tests__as_divya.txt`. |
+| New | Testing chapter built from `mysql-output/200_tests.txt` to `203_tests__as_ananya.txt` (49 tests). |
+| New | Concurrency (`demo/06_concurrency.md`), backup and recovery (`demo/07_backup_recovery.md`), audit trail (steps 153 and 195) and SQL injection (steps 196–198). Use the evidence files for screenshots. |
 
 # 3. Work breakdown check
 

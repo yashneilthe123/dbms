@@ -16,7 +16,7 @@ SELECT TIMESTAMP('2026-09-01') + INTERVAL n * 100 SECOND,
 FROM seq
 --------------
 
-Query OK, 50000 rows affected (0.83 sec)
+Query OK, 50000 rows affected (0.62 sec)
 Records: 50000  Duplicates: 0  Warnings: 0
 
 Bye

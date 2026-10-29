@@ -2,7 +2,7 @@
 DROP PROCEDURE sp_search_incidents_unsafe
 --------------
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.13 sec)
 
 --------------
 SHOW PROCEDURE STATUS WHERE Db = 'sentinelx' AND Name LIKE 'sp_search%'
@@ -11,7 +11,7 @@ SHOW PROCEDURE STATUS WHERE Db = 'sentinelx' AND Name LIKE 'sp_search%'
 +-----------+---------------------+-----------+----------------+---------------------+---------------------+---------------+---------+----------------------+----------------------+--------------------+
 | Db        | Name                | Type      | Definer        | Modified            | Created             | Security_type | Comment | character_set_client | collation_connection | Database Collation |
 +-----------+---------------------+-----------+----------------+---------------------+---------------------+---------------+---------+----------------------+----------------------+--------------------+
-| sentinelx | sp_search_incidents | PROCEDURE | root@localhost | 2026-10-29 11:20:38 | 2026-10-29 11:20:38 | DEFINER       |         | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
+| sentinelx | sp_search_incidents | PROCEDURE | root@localhost | 2026-10-29 11:34:19 | 2026-10-29 11:34:19 | DEFINER       |         | utf8mb4              | utf8mb4_0900_ai_ci   | utf8mb4_0900_ai_ci |
 +-----------+---------------------+-----------+----------------+---------------------+---------------------+---------------+---------+----------------------+----------------------+--------------------+
 1 row in set (0.00 sec)
 

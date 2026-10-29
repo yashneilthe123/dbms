@@ -14,7 +14,7 @@ Query OK, 0 rows affected (0.01 sec)
 GRANT SELECT ON sentinelx.v_attack_details     TO 'sx_analyst'
 --------------
 
-Query OK, 0 rows affected (0.00 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 GRANT SELECT ON sentinelx.v_asset_risk         TO 'sx_analyst'
@@ -32,7 +32,7 @@ Query OK, 0 rows affected (0.01 sec)
 GRANT SELECT ON sentinelx.v_retro_hunt_summary TO 'sx_analyst'
 --------------
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.00 sec)
 
 --------------
 GRANT SELECT ON sentinelx.v_ioc                TO 'sx_analyst'
@@ -94,7 +94,7 @@ CREATE USER 'rahul.mehta'@'localhost' IDENTIFIED BY 'Sx#Analyst2026' DEFAULT ROL
   FAILED_LOGIN_ATTEMPTS 3 PASSWORD_LOCK_TIME 1
 --------------
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.02 sec)
 
 --------------
 CREATE USER 'divya.iyer'@'localhost'  IDENTIFIED BY 'Sx#Viewer2026'  DEFAULT ROLE 'sx_viewer'

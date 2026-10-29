@@ -1,0 +1,300 @@
+SentinelX concurrency rehearsal, MySQL 8.0.46, 2026-10-29. Terminal A = root, terminal B = ananya.rao (admin).
+The sessions were timed with DO SLEEP() so B's statements land between A's, as in demo/06_concurrency.md.
+
+================ 6.1 Lost update (no locking) ================
+---------------- terminal A ----------------
+--------------
+SET SESSION innodb_lock_wait_timeout=5
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT 'A1' step, priority FROM incident WHERE incident_id=6
+--------------
+
++------+----------+
+| step | priority |
++------+----------+
+| A1   | MEDIUM   |
++------+----------+
+1 row in set
+
+--------------
+DO SLEEP(2)
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+UPDATE incident SET priority='HIGH' WHERE incident_id=6
+--------------
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT 'A2 committed HIGH' step
+--------------
+
++-------------------+
+| step              |
++-------------------+
+| A2 committed HIGH |
++-------------------+
+1 row in set
+
+---------------- terminal B ----------------
+--------------
+SET SESSION innodb_lock_wait_timeout=5
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT 'B1' step, priority FROM incident WHERE incident_id=6
+--------------
+
++------+----------+
+| step | priority |
++------+----------+
+| B1   | MEDIUM   |
++------+----------+
+1 row in set
+
+--------------
+DO SLEEP(2)
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+UPDATE incident SET priority='HIGH' WHERE incident_id=6
+--------------
+
+Query OK, 0 rows affected
+Rows matched: 1  Changed: 0  Warnings: 0
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT 'B2 committed HIGH' step
+--------------
+
++-------------------+
+| step              |
++-------------------+
+| B2 committed HIGH |
++-------------------+
+1 row in set
+
+
+================ 6.2 With SELECT ... FOR UPDATE ================
+---------------- terminal A ----------------
+--------------
+SET SESSION innodb_lock_wait_timeout=5
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT 'A1' step, priority, NOW(6) t FROM incident WHERE incident_id=6 FOR UPDATE
+--------------
+
++------+----------+----------------------------+
+| step | priority | t                          |
++------+----------+----------------------------+
+| A1   | MEDIUM   | 2026-10-29 11:22:42.149962 |
++------+----------+----------------------------+
+1 row in set
+
+--------------
+DO SLEEP(3)
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+UPDATE incident SET priority='HIGH' WHERE incident_id=6
+--------------
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected
+
+---------------- terminal B ----------------
+--------------
+SET SESSION innodb_lock_wait_timeout=5
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+SELECT 'B1' step, priority, NOW(6) t FROM incident WHERE incident_id=6 FOR UPDATE
+--------------
+
++------+----------+----------------------------+
+| step | priority | t                          |
++------+----------+----------------------------+
+| B1   | HIGH     | 2026-10-29 11:22:43.190500 |
++------+----------+----------------------------+
+1 row in set
+
+--------------
+UPDATE incident SET priority='CRITICAL' WHERE incident_id=6
+--------------
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected
+
+
+================ 6.3 Deadlock ================
+---------------- terminal A ----------------
+--------------
+SET SESSION innodb_lock_wait_timeout=10
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+UPDATE incident SET priority='HIGH' WHERE incident_id=3
+--------------
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+DO SLEEP(2)
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+UPDATE incident SET priority='HIGH' WHERE incident_id=6
+--------------
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+SELECT 'A got both rows' step
+--------------
+
++-----------------+
+| step            |
++-----------------+
+| A got both rows |
++-----------------+
+1 row in set
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected
+
+---------------- terminal B ----------------
+--------------
+SET SESSION innodb_lock_wait_timeout=10
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+UPDATE incident SET priority='HIGH' WHERE incident_id=6
+--------------
+
+Query OK, 1 row affected
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+DO SLEEP(2)
+--------------
+
+Query OK, 0 rows affected
+
+--------------
+UPDATE incident SET priority='HIGH' WHERE incident_id=3
+--------------
+
+ERROR 1213 (40001) at line 1: Deadlock found when trying to get lock; try restarting transaction
+--------------
+(rehearsal ran B with --force, so it carried on after the deadlock: the SELECT below ran after B's transaction had already been rolled back)
+SELECT 'B got both rows' step
+--------------
+
++-----------------+
+| step            |
++-----------------+
+| B got both rows |
++-----------------+
+1 row in set
+
+--------------
+COMMIT
+--------------
+
+Query OK, 0 rows affected
+
+
+Final priority after 6.1: HIGH (one escalation lost). Audit rows for incident 6: root MEDIUM->HIGH, ananya.rao HIGH->HIGH.
+Final priority after 6.2: CRITICAL (B waited for A, then read HIGH).
+6.3 InnoDB status: *** WE ROLL BACK TRANSACTION (2)  (terminal B).
+6.4 READ COMMITTED: second read INVESTIGATING (non-repeatable read). REPEATABLE READ: second read OPEN.

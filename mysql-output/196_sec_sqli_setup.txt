@@ -34,7 +34,7 @@ Query OK, 0 rows affected (0.01 sec)
 GRANT EXECUTE ON PROCEDURE sentinelx.sp_search_incidents_unsafe TO 'sx_analyst'
 --------------
 
-Query OK, 0 rows affected (0.04 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 GRANT EXECUTE ON PROCEDURE sentinelx.sp_search_incidents        TO 'sx_analyst'

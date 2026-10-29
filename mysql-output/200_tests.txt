@@ -10,7 +10,7 @@ BEGIN
 END
 --------------
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.02 sec)
 
 --------------
 CREATE PROCEDURE sp_expect_error(IN p_id VARCHAR(5), IN p_what VARCHAR(80),
@@ -74,9 +74,9 @@ CALL sp_check('T02', 'network_log is fully loaded', '50021', (SELECT COUNT(*) FR
 +------+-----------------------------+----------+--------+--------+
 | T02  | network_log is fully loaded | 50021    | 50021  | PASS   |
 +------+-----------------------------+----------+--------+--------+
-1 row in set (0.02 sec)
+1 row in set (0.04 sec)
 
-Query OK, 0 rows affected (0.02 sec)
+Query OK, 0 rows affected (0.04 sec)
 
 --------------
 CALL sp_expect_error('T03', 'CHECK rejects criticality 9',
@@ -116,9 +116,9 @@ CALL sp_expect_error('T05', 'FK rejects an unknown attack type',
 +------+-----------------------------------+----------+--------+--------+
 | T05  | FK rejects an unknown attack type | 1452     | 1452   | PASS   |
 +------+-----------------------------------+----------+--------+--------+
-1 row in set (0.00 sec)
+1 row in set (0.01 sec)
 
-Query OK, 0 rows affected (0.00 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 CALL sp_expect_error('T06', 'FK blocks deleting an attacked asset',
@@ -310,6 +310,39 @@ CALL sp_expect_error('T15', 'IOC history is append-only',
 Query OK, 0 rows affected (0.00 sec)
 
 --------------
+START TRANSACTION
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+UPDATE ioc SET recorded_to = NOW() WHERE ioc_value = '198.51.100.77' AND recorded_to IS NULL
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+CALL sp_expect_error('T28', 'a closed IOC version can be replaced by a new one',
+  "INSERT INTO ioc (ioc_type, ioc_value, valid_from, recorded_from) VALUES ('ip', '198.51.100.77', '2026-09-10', NOW())", 0)
+--------------
+
++------+---------------------------------------------------+----------+--------+--------+
+| test | checks                                            | expected | actual | result |
++------+---------------------------------------------------+----------+--------+--------+
+| T28  | a closed IOC version can be replaced by a new one | 0        | 0      | PASS   |
++------+---------------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+ROLLBACK
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
 CALL sp_check('T16', 'fn_severity_label(9.8), (6.5)', 'CRITICAL/MEDIUM',
   CONCAT(fn_severity_label(9.8), '/', fn_severity_label(6.5)))
 --------------
@@ -488,7 +521,7 @@ SELECT @tests_pass AS passed, @tests_fail AS failed
 +--------+--------+
 | passed | failed |
 +--------+--------+
-|     27 |      0 |
+|     28 |      0 |
 +--------+--------+
 1 row in set (0.00 sec)
 

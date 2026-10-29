@@ -60,6 +60,7 @@ SHOW GRANTS FOR 'sx_viewer';
 
 
 -- ---- sec_viewer__as_divya ----
+-- run while logged in as the divya test user
 SELECT CURRENT_USER() AS logged_in_as, CURRENT_ROLE() AS active_role;
 
 SELECT hostname, criticality, attacks, not_blocked, open_vulns
@@ -75,6 +76,7 @@ UPDATE v_asset_risk SET criticality = 1 WHERE asset_id = 1;
 
 
 -- ---- sec_analyst__as_rahul ----
+-- run while logged in as the rahul test user
 SELECT CURRENT_USER() AS logged_in_as, CURRENT_ROLE() AS active_role;
 
 SELECT incident_id, title, priority, status FROM v_my_incidents;
@@ -103,6 +105,7 @@ WHERE ioc_version_id = (SELECT MAX(ioc_version_id) FROM v_ioc);
 
 
 -- ---- sec_admin__as_ananya ----
+-- run while logged in as the ananya test user
 SELECT CURRENT_USER() AS logged_in_as, CURRENT_ROLE() AS active_role;
 SELECT COUNT(*) AS incidents FROM incident;
 
@@ -153,6 +156,7 @@ GRANT EXECUTE ON PROCEDURE sentinelx.sp_search_incidents        TO 'sx_analyst';
 
 
 -- ---- sec_sqli__as_rahul ----
+-- run while logged in as the rahul test user
 -- normal use: rahul's own incidents with 'Brute' in the title
 CALL sp_search_incidents_unsafe('Brute');
 

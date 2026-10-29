@@ -22,7 +22,7 @@ SHOW GRANTS FOR 'sx_viewer'
 REVOKE SELECT ON sentinelx.network_log FROM 'sx_viewer'
 --------------
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.00 sec)
 
 --------------
 SHOW GRANTS FOR 'sx_viewer'
