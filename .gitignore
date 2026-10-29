@@ -4,3 +4,5 @@ runner/out/
 runner/steps.zip
 screenshots/
 tools/attrs.json
+node_modules/
+tools/report/out/

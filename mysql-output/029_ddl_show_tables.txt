@@ -23,6 +23,6 @@ SHOW TABLES
 | threat_actor        |
 | vulnerability       |
 +---------------------+
-17 rows in set (0.00 sec)
+17 rows in set (0.01 sec)
 
 Bye

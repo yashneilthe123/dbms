@@ -2,8 +2,12 @@
 import re, os, json
 from PIL import Image, ImageDraw, ImageFont
 
-MONO = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf', 24)
-MONOB = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 24)
+FONT_DIR = '/usr/share/fonts/truetype/dejavu'
+if not os.path.exists(FONT_DIR):  # Windows/macOS: matplotlib ships the same DejaVu fonts
+    import matplotlib
+    FONT_DIR = os.path.join(matplotlib.get_data_path(), 'fonts', 'ttf')
+MONO = ImageFont.truetype(os.path.join(FONT_DIR, 'DejaVuSansMono.ttf'), 24)
+MONOB = ImageFont.truetype(os.path.join(FONT_DIR, 'DejaVuSansMono-Bold.ttf'), 24)
 CW = MONO.getlength('M')
 CWB = MONOB.getlength('M')
 LH = 31

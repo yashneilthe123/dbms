@@ -11,7 +11,7 @@ LEFT JOIN attack_event e ON e.asset_id = a.asset_id
 GROUP BY a.asset_id, a.hostname, a.criticality
 --------------
 
-Query OK, 0 rows affected (0.02 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 SELECT hostname, criticality, attacks, not_blocked, worst_severity, open_vulns

@@ -22,6 +22,6 @@ CREATE TABLE attack_event (
 )
 --------------
 
-Query OK, 0 rows affected (0.08 sec)
+Query OK, 0 rows affected (0.10 sec)
 
 Bye

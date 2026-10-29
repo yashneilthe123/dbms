@@ -13,7 +13,7 @@ BEGIN
 END
 --------------
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.02 sec)
 
 --------------
 CREATE PROCEDURE sp_search_incidents(IN p_text VARCHAR(100))
