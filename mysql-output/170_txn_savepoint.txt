@@ -45,7 +45,7 @@ Query OK, 0 rows affected (0.00 sec)
 COMMIT
 --------------
 
-Query OK, 0 rows affected (0.01 sec)
+Query OK, 0 rows affected (0.08 sec)
 
 --------------
 SELECT ioc_version_id, ioc_type, ioc_value FROM ioc WHERE ioc_value = 'kestrel-drop.example'

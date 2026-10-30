@@ -2,7 +2,7 @@
 CREATE INDEX idx_src_time ON network_log (src_ip, log_time)
 --------------
 
-Query OK, 0 rows affected (0.54 sec)
+Query OK, 0 rows affected (0.31 sec)
 Records: 0  Duplicates: 0  Warnings: 0
 
 --------------

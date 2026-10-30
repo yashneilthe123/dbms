@@ -79,26 +79,26 @@ INSERT INTO threat_actor (actor_id, actor_name, origin_country, motive) VALUES
   (5, 'Ghost Parrot', 'BR', 'financial'),
   (6, 'Quiet Willow', 'IR', 'espionage');
 
-INSERT INTO malware (malware_id, malware_name, family, sha256, actor_id, cluster_id) VALUES
-  (1, 'LynxLocker', 'Locker', '31daf39d2783c1d131fac1cc54f9165519dae4f9a22164b12f0bef5621a4e7fa', 1, 1),
-  (2, 'LynxLoader', 'Loader', '6f7bffacc2f9d7b143cb753a90f80a48793638a0f4c1d4ad556eb1bd64a8e603', 1, 2),
-  (3, 'MonsoonRAT', 'RAT', 'f968c5ac3830e7a862da805cd869db72875cc0ecaa2c4f490a0037c7bad431d2', 2, 3),
-  (4, 'MonsoonStealer', 'Stealer', '7061e84eb05a9300d1d5eb82886ef767266645289dc0096eb3d7cebee96256f7', 2, 2),
-  (5, 'KestrelWiper', 'Wiper', '185a5b513e09e1d5939f984e6219e7855ce4d30a401e328a259f258644e86ee6', 4, 1),
-  (6, 'ParrotBot', 'Botnet', 'd6899f70b14408b620ec88b1bff877f15a6620276f9f19149ae3f028f62ecb12', 5, 4),
-  (7, 'OrphanMiner', 'Miner', '5ffb17695d02253028e32068b5d60383b4bc7a55aa24efe1d77629676ae64b74', NULL, 4),
-  (8, 'WillowRAT', 'RAT', '80224518b2845efe9cee48e30b16a3a5e5791690310f10c1125a4b0a36bb004f', 6, 3);
+INSERT INTO malware (malware_id, malware_name, family, sha256, actor_id) VALUES
+  (1, 'LynxLocker', 'Locker', '31daf39d2783c1d131fac1cc54f9165519dae4f9a22164b12f0bef5621a4e7fa', 1),
+  (2, 'LynxLoader', 'Loader', '6f7bffacc2f9d7b143cb753a90f80a48793638a0f4c1d4ad556eb1bd64a8e603', 1),
+  (3, 'MonsoonRAT', 'RAT', 'f968c5ac3830e7a862da805cd869db72875cc0ecaa2c4f490a0037c7bad431d2', 2),
+  (4, 'MonsoonStealer', 'Stealer', '7061e84eb05a9300d1d5eb82886ef767266645289dc0096eb3d7cebee96256f7', 2),
+  (5, 'KestrelWiper', 'Wiper', '185a5b513e09e1d5939f984e6219e7855ce4d30a401e328a259f258644e86ee6', 4),
+  (6, 'ParrotBot', 'Botnet', 'd6899f70b14408b620ec88b1bff877f15a6620276f9f19149ae3f028f62ecb12', 5),
+  (7, 'OrphanMiner', 'Miner', '5ffb17695d02253028e32068b5d60383b4bc7a55aa24efe1d77629676ae64b74', NULL),
+  (8, 'WillowRAT', 'RAT', '80224518b2845efe9cee48e30b16a3a5e5791690310f10c1125a4b0a36bb004f', 6);
 
-INSERT INTO attack_event (event_id, event_time, src_ip, src_country, asset_id, type_id, actor_id, malware_id, cve_id, severity, blocked, predicted_severity) VALUES
-  (1, '2026-10-01 02:14:00', '198.51.100.23', 'RU', 1, 1, 1, NULL, NULL, 6, 1, 'MEDIUM'),
+INSERT INTO attack_event (event_id, event_time, src_ip, src_country, asset_id, type_id, actor_id, malware_id, cve_id, severity, blocked, triage_priority) VALUES
+  (1, '2026-10-01 02:14:00', '198.51.100.23', 'RU', 1, 1, 1, NULL, NULL, 6, 1, 'LOW'),
   (2, '2026-10-01 02:20:00', '198.51.100.23', 'RU', 1, 1, 1, NULL, NULL, 7, 0, 'HIGH'),
   (3, '2026-10-02 11:05:00', '203.0.113.200', 'US', 1, 4, NULL, NULL, NULL, 3, 1, 'LOW'),
   (4, '2026-10-03 09:30:00', '203.0.113.10', 'CN', 4, 2, 2, 3, NULL, 6, 0, 'MEDIUM'),
   (5, '2026-10-04 22:10:00', '203.0.113.10', 'CN', 4, 3, 2, 3, 'CVE-2023-4966', 9, 0, 'CRITICAL'),
-  (6, '2026-10-05 01:00:00', '192.0.2.50', 'KP', 3, 3, 4, NULL, 'CVE-2023-34362', 9, 1, 'CRITICAL'),
+  (6, '2026-10-05 01:00:00', '192.0.2.50', 'KP', 3, 3, 4, NULL, 'CVE-2023-34362', 9, 1, 'HIGH'),
   (7, '2026-10-05 01:45:00', '192.0.2.50', 'KP', 3, 7, 4, 5, NULL, 9, 0, 'CRITICAL'),
-  (8, '2026-10-06 14:20:00', '198.51.100.88', 'BR', 2, 6, 5, 6, NULL, 7, 1, 'HIGH'),
-  (9, '2026-10-06 14:25:00', '198.51.100.88', 'BR', 2, 6, 5, 6, NULL, 7, 1, 'HIGH'),
+  (8, '2026-10-06 14:20:00', '198.51.100.88', 'BR', 2, 6, 5, 6, NULL, 7, 1, 'MEDIUM'),
+  (9, '2026-10-06 14:25:00', '198.51.100.88', 'BR', 2, 6, 5, 6, NULL, 7, 1, 'MEDIUM'),
   (10, '2026-10-07 03:33:00', '198.51.100.45', 'RU', 2, 3, 1, 2, 'CVE-2022-22965', 8, 0, 'HIGH'),
   (11, '2026-10-07 04:10:00', '198.51.100.45', 'RU', 2, 5, 1, 1, NULL, 10, 0, 'CRITICAL'),
   (12, '2026-10-08 10:00:00', '203.0.113.200', 'US', 5, 4, NULL, NULL, NULL, 2, 1, 'LOW'),
@@ -106,11 +106,11 @@ INSERT INTO attack_event (event_id, event_time, src_ip, src_country, asset_id, t
   (14, '2026-10-09 16:45:00', '192.0.2.77', 'NL', 1, 6, 3, NULL, 'CVE-2023-44487', 8, 0, 'HIGH'),
   (15, '2026-10-10 08:15:00', '203.0.113.11', 'CN', 9, 3, 2, 4, 'CVE-2024-3400', 10, 0, 'CRITICAL'),
   (16, '2026-10-10 08:40:00', '203.0.113.11', 'CN', 9, 7, 2, 4, NULL, 9, 0, 'CRITICAL'),
-  (17, '2026-10-11 12:00:00', '198.51.100.23', 'RU', 6, 2, 1, 2, NULL, 5, 1, 'MEDIUM'),
+  (17, '2026-10-11 12:00:00', '198.51.100.23', 'RU', 6, 2, 1, 2, NULL, 5, 1, 'LOW'),
   (18, '2026-10-12 19:30:00', '203.0.113.99', 'IN', 8, 1, NULL, 7, NULL, 4, 0, 'MEDIUM'),
-  (19, '2026-10-13 07:05:00', '198.51.100.88', 'BR', 1, 6, 5, 6, NULL, 6, 1, 'MEDIUM'),
-  (20, '2026-10-14 23:50:00', '192.0.2.50', 'KP', 7, 2, 4, NULL, NULL, 6, 1, 'MEDIUM'),
-  (21, '2026-10-15 05:20:00', '203.0.113.10', 'CN', 3, 3, 2, 3, 'CVE-2021-44228', 8, 1, 'HIGH'),
+  (19, '2026-10-13 07:05:00', '198.51.100.88', 'BR', 1, 6, 5, 6, NULL, 6, 1, 'LOW'),
+  (20, '2026-10-14 23:50:00', '192.0.2.50', 'KP', 7, 2, 4, NULL, NULL, 6, 1, 'LOW'),
+  (21, '2026-10-15 05:20:00', '203.0.113.10', 'CN', 3, 3, 2, 3, 'CVE-2021-44228', 8, 1, 'MEDIUM'),
   (22, '2026-10-16 13:13:00', '203.0.113.200', 'US', 4, 4, NULL, NULL, NULL, 2, 1, 'LOW'),
   (23, '2026-10-18 02:02:00', '198.51.100.45', 'RU', 1, 1, 1, NULL, NULL, 7, 0, 'HIGH'),
   (24, '2026-10-18 02:05:00', '198.51.100.45', 'RU', 1, 1, 1, NULL, NULL, 8, 0, 'HIGH'),
@@ -253,14 +253,12 @@ FROM seq;
 
 
 -- ---- dml_update ----
-SELECT event_id, severity, predicted_severity FROM attack_event WHERE event_id IN (25, 26);
+SELECT event_id, severity, blocked, triage_priority FROM attack_event WHERE event_id IN (25, 26);
 UPDATE attack_event
-   SET predicted_severity = CASE WHEN severity >= 9 THEN 'CRITICAL'
-                                 WHEN severity >= 7 THEN 'HIGH'
-                                 WHEN severity >= 4 THEN 'MEDIUM'
-                                 ELSE 'LOW' END
+   SET triage_priority = CASE event_id WHEN 25 THEN 'MEDIUM'   -- severity 7, but blocked
+                                       WHEN 26 THEN 'LOW' END   -- severity 4, blocked
  WHERE event_id IN (25, 26);
-SELECT event_id, severity, predicted_severity FROM attack_event WHERE event_id IN (25, 26);
+SELECT event_id, severity, blocked, triage_priority FROM attack_event WHERE event_id IN (25, 26);
 
 
 -- ---- dml_delete ----
@@ -279,6 +277,23 @@ DELETE FROM asset WHERE asset_id = 1;
 INSERT INTO incident (title, priority, status, closed_at) VALUES ('Test', 'LOW', 'OPEN', '2026-10-27 10:00:00');
 
 
+-- ---- dml_normalisation_check ----
+-- functional dependency mitre_technique -> type_id: no technique maps to two attack types (empty result)
+SELECT mitre_technique, COUNT(DISTINCT type_id) AS types
+FROM attack_type GROUP BY mitre_technique HAVING COUNT(DISTINCT type_id) > 1;
+
+-- update anomaly: copy attacks and their asset's criticality into one flat table, as before 3NF
+CREATE TEMPORARY TABLE flat_attack AS
+SELECT e.event_id, a.hostname, a.criticality FROM attack_event e JOIN asset a ON a.asset_id = e.asset_id;
+UPDATE flat_attack SET criticality = 1 WHERE event_id = 1;
+SELECT hostname, GROUP_CONCAT(DISTINCT criticality ORDER BY criticality) AS criticality_values
+FROM flat_attack WHERE hostname = 'web-01' GROUP BY hostname;
+DROP TEMPORARY TABLE flat_attack;
+
+-- in the normalised schema the fact is stored once, so it cannot disagree with itself
+SELECT hostname, criticality FROM asset WHERE hostname = 'web-01';
+
+
 -- ---- dml_row_counts ----
 SELECT 'asset' AS table_name, COUNT(*) AS row_count FROM asset
 UNION ALL SELECT 'vulnerability', COUNT(*) FROM vulnerability
@@ -295,4 +310,5 @@ UNION ALL SELECT 'incident_event', COUNT(*) FROM incident_event
 UNION ALL SELECT 'ioc', COUNT(*) FROM ioc
 UNION ALL SELECT 'event_ioc', COUNT(*) FROM event_ioc
 UNION ALL SELECT 'retro_hunt_run', COUNT(*) FROM retro_hunt_run
-UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit;
+UNION ALL SELECT 'retro_hit', COUNT(*) FROM retro_hit
+UNION ALL SELECT 'incident_audit', COUNT(*) FROM incident_audit;

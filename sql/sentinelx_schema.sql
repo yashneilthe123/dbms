@@ -1,5 +1,5 @@
 -- SentinelX: Cyber Attack Intelligence and Threat Hunting Platform
--- MySQL 8.0 schema (3NF), 16 tables. Tables are created in dependency order.
+-- MySQL 8.0 schema (3NF), 16 tables plus the incident_audit trail. Tables are created in dependency order.
 
 CREATE DATABASE IF NOT EXISTS sentinelx;
 USE sentinelx;
@@ -75,7 +75,6 @@ CREATE TABLE malware (
   family        VARCHAR(30) NOT NULL,
   sha256        CHAR(64) NOT NULL UNIQUE CHECK (sha256 REGEXP '^[0-9a-f]{64}$'),
   actor_id      INT,
-  cluster_id    SMALLINT,                            -- filled by the ML job
   FOREIGN KEY (actor_id) REFERENCES threat_actor(actor_id) ON DELETE SET NULL
 );
 
@@ -91,7 +90,7 @@ CREATE TABLE attack_event (
   cve_id              VARCHAR(16),
   severity            TINYINT NOT NULL CHECK (severity BETWEEN 1 AND 10),
   blocked             BOOLEAN NOT NULL,
-  predicted_severity  ENUM('LOW','MEDIUM','HIGH','CRITICAL'),   -- filled by the ML job
+  triage_priority     ENUM('LOW','MEDIUM','HIGH','CRITICAL'),   -- set by an analyst; NULL = not triaged yet
   FOREIGN KEY (asset_id) REFERENCES asset(asset_id),
   FOREIGN KEY (type_id) REFERENCES attack_type(type_id),
   FOREIGN KEY (actor_id) REFERENCES threat_actor(actor_id),
@@ -174,6 +173,23 @@ CREATE TABLE retro_hit (
   PRIMARY KEY (run_id, log_id),
   FOREIGN KEY (run_id) REFERENCES retro_hunt_run(run_id) ON DELETE CASCADE,
   FOREIGN KEY (log_id) REFERENCES network_log(log_id)
+);
+
+-- ---------- Audit trail ----------
+
+CREATE TABLE incident_audit (
+  audit_id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+  incident_id      INT NOT NULL,                     -- no FK: the trail must outlive a deleted incident
+  action           ENUM('UPDATE','DELETE') NOT NULL,
+  changed_by       VARCHAR(288) NOT NULL,            -- USER(): the account that ran the statement
+  changed_at       DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  old_status       ENUM('OPEN','INVESTIGATING','CONTAINED','CLOSED'),
+  new_status       ENUM('OPEN','INVESTIGATING','CONTAINED','CLOSED'),
+  old_priority     ENUM('LOW','MEDIUM','HIGH','CRITICAL'),
+  new_priority     ENUM('LOW','MEDIUM','HIGH','CRITICAL'),
+  old_assigned_to  INT,
+  new_assigned_to  INT,
+  INDEX idx_incident (incident_id, changed_at)
 );
 
 -- ---------- Views for derived values (kept out of the tables for 3NF) ----------

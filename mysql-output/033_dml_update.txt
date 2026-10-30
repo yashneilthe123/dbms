@@ -1,37 +1,35 @@
 --------------
-SELECT event_id, severity, predicted_severity FROM attack_event WHERE event_id IN (25, 26)
+SELECT event_id, severity, blocked, triage_priority FROM attack_event WHERE event_id IN (25, 26)
 --------------
 
-+----------+----------+--------------------+
-| event_id | severity | predicted_severity |
-+----------+----------+--------------------+
-|       25 |        7 | NULL               |
-|       26 |        4 | NULL               |
-+----------+----------+--------------------+
++----------+----------+---------+-----------------+
+| event_id | severity | blocked | triage_priority |
++----------+----------+---------+-----------------+
+|       25 |        7 |       1 | NULL            |
+|       26 |        4 |       1 | NULL            |
++----------+----------+---------+-----------------+
 2 rows in set (0.00 sec)
 
 --------------
 UPDATE attack_event
-   SET predicted_severity = CASE WHEN severity >= 9 THEN 'CRITICAL'
-                                 WHEN severity >= 7 THEN 'HIGH'
-                                 WHEN severity >= 4 THEN 'MEDIUM'
-                                 ELSE 'LOW' END
+   SET triage_priority = CASE event_id WHEN 25 THEN 'MEDIUM'   
+                                       WHEN 26 THEN 'LOW' END   
  WHERE event_id IN (25, 26)
 --------------
 
-Query OK, 2 rows affected (0.02 sec)
+Query OK, 2 rows affected (0.01 sec)
 Rows matched: 2  Changed: 2  Warnings: 0
 
 --------------
-SELECT event_id, severity, predicted_severity FROM attack_event WHERE event_id IN (25, 26)
+SELECT event_id, severity, blocked, triage_priority FROM attack_event WHERE event_id IN (25, 26)
 --------------
 
-+----------+----------+--------------------+
-| event_id | severity | predicted_severity |
-+----------+----------+--------------------+
-|       25 |        7 | HIGH               |
-|       26 |        4 | MEDIUM             |
-+----------+----------+--------------------+
++----------+----------+---------+-----------------+
+| event_id | severity | blocked | triage_priority |
++----------+----------+---------+-----------------+
+|       25 |        7 |       1 | MEDIUM          |
+|       26 |        4 |       1 | LOW             |
++----------+----------+---------+-----------------+
 2 rows in set (0.00 sec)
 
 Bye

@@ -11,7 +11,7 @@ CREATE TABLE attack_event (
   cve_id              VARCHAR(16),
   severity            TINYINT NOT NULL CHECK (severity BETWEEN 1 AND 10),
   blocked             BOOLEAN NOT NULL,
-  predicted_severity  ENUM('LOW','MEDIUM','HIGH','CRITICAL'),   
+  triage_priority     ENUM('LOW','MEDIUM','HIGH','CRITICAL'),   
   FOREIGN KEY (asset_id) REFERENCES asset(asset_id),
   FOREIGN KEY (type_id) REFERENCES attack_type(type_id),
   FOREIGN KEY (actor_id) REFERENCES threat_actor(actor_id),
@@ -22,6 +22,6 @@ CREATE TABLE attack_event (
 )
 --------------
 
-Query OK, 0 rows affected (0.10 sec)
+Query OK, 0 rows affected (0.07 sec)
 
 Bye

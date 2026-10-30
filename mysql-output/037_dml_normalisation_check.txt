@@ -1,0 +1,52 @@
+--------------
+SELECT mitre_technique, COUNT(DISTINCT type_id) AS types
+FROM attack_type GROUP BY mitre_technique HAVING COUNT(DISTINCT type_id) > 1
+--------------
+
+Empty set (0.00 sec)
+
+--------------
+CREATE TEMPORARY TABLE flat_attack AS
+SELECT e.event_id, a.hostname, a.criticality FROM attack_event e JOIN asset a ON a.asset_id = e.asset_id
+--------------
+
+Query OK, 30 rows affected (0.00 sec)
+Records: 30  Duplicates: 0  Warnings: 0
+
+--------------
+UPDATE flat_attack SET criticality = 1 WHERE event_id = 1
+--------------
+
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+--------------
+SELECT hostname, GROUP_CONCAT(DISTINCT criticality ORDER BY criticality) AS criticality_values
+FROM flat_attack WHERE hostname = 'web-01' GROUP BY hostname
+--------------
+
++----------+--------------------+
+| hostname | criticality_values |
++----------+--------------------+
+| web-01   | 1,5                |
++----------+--------------------+
+1 row in set (0.00 sec)
+
+--------------
+DROP TEMPORARY TABLE flat_attack
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT hostname, criticality FROM asset WHERE hostname = 'web-01'
+--------------
+
++----------+-------------+
+| hostname | criticality |
++----------+-------------+
+| web-01   |           5 |
++----------+-------------+
+1 row in set (0.00 sec)
+
+Bye

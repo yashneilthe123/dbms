@@ -46,14 +46,18 @@ ACTORS = [  # id, name, origin, motive
 ]
 def sha(name):
     return hashlib.sha256(name.encode()).hexdigest()
-MALWARE = [  # id, name, family, actor, cluster
-    (1, 'LynxLocker', 'Locker', 1, 1), (2, 'LynxLoader', 'Loader', 1, 2),
-    (3, 'MonsoonRAT', 'RAT', 2, 3), (4, 'MonsoonStealer', 'Stealer', 2, 2),
-    (5, 'KestrelWiper', 'Wiper', 4, 1), (6, 'ParrotBot', 'Botnet', 5, 4),
-    (7, 'OrphanMiner', 'Miner', None, 4), (8, 'WillowRAT', 'RAT', 6, 3),
+MALWARE = [  # id, name, family, actor
+    (1, 'LynxLocker', 'Locker', 1), (2, 'LynxLoader', 'Loader', 1),
+    (3, 'MonsoonRAT', 'RAT', 2), (4, 'MonsoonStealer', 'Stealer', 2),
+    (5, 'KestrelWiper', 'Wiper', 4), (6, 'ParrotBot', 'Botnet', 5),
+    (7, 'OrphanMiner', 'Miner', None), (8, 'WillowRAT', 'RAT', 6),
 ]
-def pred(sev):
-    return 'CRITICAL' if sev >= 9 else 'HIGH' if sev >= 7 else 'MEDIUM' if sev >= 4 else 'LOW'
+LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+def triage(sev, blocked):
+    # analyst's call: starts from severity, one level lower if the firewall already blocked it,
+    # so triage_priority is not determined by severity alone
+    level = 3 if sev >= 9 else 2 if sev >= 7 else 1 if sev >= 4 else 0
+    return LEVELS[max(level - blocked, 0)]
 # id, time, src_ip, country, asset, type, actor, malware, cve, severity, blocked
 EVENTS = [
     (1, '2026-10-01 02:14:00', '198.51.100.23', 'RU', 1, 1, 1, None, None, 6, 1),
@@ -87,9 +91,9 @@ EVENTS = [
     (29, '2026-10-25 11:11:00', '198.51.100.23', 'RU', 9, 3, 1, 2, 'CVE-2024-6387', 9, 1),
     (30, '2026-10-26 15:40:00', '192.0.2.50', 'KP', 3, 5, 4, 5, None, 10, 0),
 ]
-# events 1-24 already scored by the ML job; 25-30 not yet (25 and 26 are scored by the UPDATE demo)
-def predicted(e):
-    return pred(e[9]) if e[0] <= 24 else None
+# events 1-24 already triaged by an analyst; 25-30 not yet (25 and 26 are triaged by the UPDATE demo)
+def triaged(e):
+    return triage(e[9], e[10]) if e[0] <= 24 else None
 
 ANALYSTS = [
     (1, 'Ananya Rao', 'ananya.rao@sentinelx.in', 'admin'), (2, 'Rahul Mehta', 'rahul.mehta@sentinelx.in', 'analyst'),
@@ -178,10 +182,10 @@ def seed_rest():
     s.append("INSERT INTO attack_type (type_id, type_name, mitre_technique, base_severity) VALUES\n" + values(TYPES) + ";")
     s.append("INSERT INTO mitigation (type_id, step_no, action) VALUES\n" + values(MITIGATION) + ";")
     s.append("INSERT INTO threat_actor (actor_id, actor_name, origin_country, motive) VALUES\n" + values(ACTORS) + ";")
-    s.append("INSERT INTO malware (malware_id, malware_name, family, sha256, actor_id, cluster_id) VALUES\n"
-             + values([(m[0], m[1], m[2], sha(m[1]), m[3], m[4]) for m in MALWARE]) + ";")
-    s.append("INSERT INTO attack_event (event_id, event_time, src_ip, src_country, asset_id, type_id, actor_id, malware_id, cve_id, severity, blocked, predicted_severity) VALUES\n"
-             + values([e + (predicted(e),) for e in EVENTS]) + ";")
+    s.append("INSERT INTO malware (malware_id, malware_name, family, sha256, actor_id) VALUES\n"
+             + values([(m[0], m[1], m[2], sha(m[1]), m[3]) for m in MALWARE]) + ";")
+    s.append("INSERT INTO attack_event (event_id, event_time, src_ip, src_country, asset_id, type_id, actor_id, malware_id, cve_id, severity, blocked, triage_priority) VALUES\n"
+             + values([e + (triaged(e),) for e in EVENTS]) + ";")
     s.append("INSERT INTO analyst (analyst_id, full_name, email, role) VALUES\n" + values(ANALYSTS) + ";")
     s.append("INSERT INTO incident (incident_id, title, priority, status, assigned_to, opened_at, closed_at) VALUES\n" + values(INCIDENTS) + ";")
     s.append("INSERT INTO incident_event (incident_id, event_id) VALUES\n" + values(INCIDENT_EVENT) + ";")

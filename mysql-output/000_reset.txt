@@ -2,19 +2,19 @@
 DROP DATABASE IF EXISTS sentinelx
 --------------
 
-Query OK, 0 rows affected, 1 warning (0.00 sec)
+Query OK, 23 rows affected (0.24 sec)
 
 --------------
 DROP USER IF EXISTS 'ananya.rao'@'localhost', 'rahul.mehta'@'localhost', 'divya.iyer'@'localhost'
 --------------
 
-Query OK, 0 rows affected, 3 warnings (0.00 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 DROP ROLE IF EXISTS 'sx_admin', 'sx_analyst', 'sx_viewer'
 --------------
 
-Query OK, 0 rows affected, 3 warnings (0.00 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 CREATE DATABASE sentinelx

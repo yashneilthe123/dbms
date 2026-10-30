@@ -1,0 +1,58 @@
+SentinelX point-in-time recovery rehearsal, MySQL 8.0.46, 2026-10-29 (scratch server on port 3307).
+
+== binlog events after the backup position (from the backup's CHANGE MASTER comment) ==
+-- CHANGE MASTER TO MASTER_LOG_FILE='binlog.000002', MASTER_LOG_POS=16453827;
++---------------+----------+----------------+-----------+-------------+-----------------------------------------------+
+| Log_name      | Pos      | Event_type     | Server_id | End_log_pos | Info                                          |
++---------------+----------+----------------+-----------+-------------+-----------------------------------------------+
+| binlog.000002 | 16453827 | Anonymous_Gtid |         1 |    16453906 | SET @@SESSION.GTID_NEXT= 'ANONYMOUS'          |
+| binlog.000002 | 16453906 | Query          |         1 |    16453996 | BEGIN                                         |
+| binlog.000002 | 16453996 | Table_map      |         1 |    16454085 | table_id: 551 (sentinelx.attack_event)        |
+| binlog.000002 | 16454085 | Table_map      |         1 |    16454163 | table_id: 554 (sentinelx.incident)            |
+| binlog.000002 | 16454163 | Table_map      |         1 |    16454229 | table_id: 556 (sentinelx.incident_event)      |
+| binlog.000002 | 16454229 | Write_rows     |         1 |    16454307 | table_id: 551 flags: STMT_END_F               |
+| binlog.000002 | 16454307 | Xid            |         1 |    16454338 | COMMIT /* xid=10886 */                        |
+| binlog.000002 | 16454338 | Anonymous_Gtid |         1 |    16454417 | SET @@SESSION.GTID_NEXT= 'ANONYMOUS'          |
+| binlog.000002 | 16454417 | Query          |         1 |    16454508 | BEGIN                                         |
+| binlog.000002 | 16454508 | Table_map      |         1 |    16454586 | table_id: 554 (sentinelx.incident)            |
+| binlog.000002 | 16454586 | Table_map      |         1 |    16454680 | table_id: 555 (sentinelx.incident_audit)      |
+| binlog.000002 | 16454680 | Update_rows    |         1 |    16454802 | table_id: 554                                 |
+| binlog.000002 | 16454802 | Write_rows     |         1 |    16454889 | table_id: 555 flags: STMT_END_F               |
+| binlog.000002 | 16454889 | Xid            |         1 |    16454920 | COMMIT /* xid=10889 */                        |
+| binlog.000002 | 16454920 | Anonymous_Gtid |         1 |    16454999 | SET @@SESSION.GTID_NEXT= 'ANONYMOUS'          |
+| binlog.000002 | 16454999 | Query          |         1 |    16455079 | BEGIN                                         |
+| binlog.000002 | 16455079 | Table_map      |         1 |    16455159 | table_id: 550 (sentinelx.asset_vulnerability) |
+| binlog.000002 | 16455159 | Delete_rows    |         1 |    16455406 | table_id: 550 flags: STMT_END_F               |
+| binlog.000002 | 16455406 | Xid            |         1 |    16455437 | COMMIT /* xid=10895 */                        |
++---------------+----------+----------------+-----------+-------------+-----------------------------------------------+
+
+== replay.sql (first lines) ==
+# The proper term is pseudo_replica_mode, but we use this compatibility alias
+# to make the statement usable on server versions 8.0.24 and older.
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!32316 SET @OLD_SQL_LOG_BIN=@@SQL_LOG_BIN, SQL_LOG_BIN=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 16453827
+#261029 10:41:20 server id 1  end_log_pos 0 CRC32 0x653fde14 	Start: binlog v 4, server v 8.0.46 created 261029 10:41:20
+BINLOG '
+eNXiag8BAAAAegAAAAAAAAAAAAQAOC4wLjQ2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAEwANAAgAAAAABAAEAAAAYgAEGggAAAAICAgCAAAACgoKKioAEjQA
+CigAARTeP2U=
+
+== after restore + replay ==
++---------+
+| patches |
++---------+
+|       9 |
++---------+
++--------------------+
+| post_backup_attack |
++--------------------+
+|                  1 |
++--------------------+
++-------------+---------------+
+| incident_id | status        |
++-------------+---------------+
+|           6 | INVESTIGATING |
++-------------+---------------+

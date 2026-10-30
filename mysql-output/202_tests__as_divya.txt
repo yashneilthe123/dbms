@@ -1,0 +1,88 @@
+--------------
+SET @tests_pass = 0, @tests_fail = 0
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('V01', 'viewer can read the risk view',
+  "DO (SELECT COUNT(*) FROM v_asset_risk)", 0)
+--------------
+
++------+-------------------------------+----------+--------+--------+
+| test | checks                        | expected | actual | result |
++------+-------------------------------+----------+--------+--------+
+| V01  | viewer can read the risk view | 0        | 0      | PASS   |
++------+-------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('V02', 'viewer cannot read a base table',
+  "DO (SELECT COUNT(*) FROM attack_event)", 1142)
+--------------
+
++------+---------------------------------+----------+--------+--------+
+| test | checks                          | expected | actual | result |
++------+---------------------------------+----------+--------+--------+
+| V02  | viewer cannot read a base table | 1142     | 1142   | PASS   |
++------+---------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('V03', 'viewer cannot delete',
+  "DELETE FROM attack_event WHERE event_id = 1", 1142)
+--------------
+
++------+----------------------+----------+--------+--------+
+| test | checks               | expected | actual | result |
++------+----------------------+----------+--------+--------+
+| V03  | viewer cannot delete | 1142     | 1142   | PASS   |
++------+----------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('V04', 'viewer cannot run the assign procedure',
+  "CALL sp_assign_incident(9, 5)", 1370)
+--------------
+
++------+----------------------------------------+----------+--------+--------+
+| test | checks                                 | expected | actual | result |
++------+----------------------------------------+----------+--------+--------+
+| V04  | viewer cannot run the assign procedure | 1370     | 1370   | PASS   |
++------+----------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('V05', 'viewer cannot update the risk view',
+  "UPDATE v_asset_risk SET criticality = 1 WHERE asset_id = 1", 1142)
+--------------
+
++------+------------------------------------+----------+--------+--------+
+| test | checks                             | expected | actual | result |
++------+------------------------------------+----------+--------+--------+
+| V05  | viewer cannot update the risk view | 1142     | 1142   | PASS   |
++------+------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT @tests_pass AS passed, @tests_fail AS failed
+--------------
+
++--------+--------+
+| passed | failed |
++--------+--------+
+|      5 |      0 |
++--------+--------+
+1 row in set (0.00 sec)
+
+Bye

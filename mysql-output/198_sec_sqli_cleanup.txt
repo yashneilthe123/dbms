@@ -1,0 +1,19 @@
+--------------
+DROP PROCEDURE sp_search_incidents_unsafe
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+SELECT routine_name, security_type FROM information_schema.routines
+WHERE routine_schema = 'sentinelx' AND routine_name LIKE 'sp_search%'
+--------------
+
++---------------------+---------------+
+| ROUTINE_NAME        | SECURITY_TYPE |
++---------------------+---------------+
+| sp_search_incidents | DEFINER       |
++---------------------+---------------+
+1 row in set (0.00 sec)
+
+Bye

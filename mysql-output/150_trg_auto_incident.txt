@@ -29,7 +29,7 @@ BEGIN
 END
 --------------
 
-Query OK, 0 rows affected (0.09 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 SELECT COUNT(*) AS incidents_before FROM incident

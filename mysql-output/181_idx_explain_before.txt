@@ -2,7 +2,7 @@
 ALTER TABLE network_log DROP INDEX idx_src_time
 --------------
 
-Query OK, 0 rows affected (0.06 sec)
+Query OK, 0 rows affected (0.02 sec)
 Records: 0  Duplicates: 0  Warnings: 0
 
 --------------
@@ -33,7 +33,7 @@ possible_keys: NULL
           key: NULL
       key_len: NULL
           ref: NULL
-         rows: 50163
+         rows: 50155
      filtered: 1.11
         Extra: Using where
 1 row in set, 1 warning (0.00 sec)

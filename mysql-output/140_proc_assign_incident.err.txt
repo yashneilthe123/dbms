@@ -1,2 +1,2 @@
-ERROR 1644 (45000) at line 37: Incident is already closed
-ERROR 1644 (45000) at line 38: Only analysts or admins can own incidents
+ERROR 1644 (45000) at line 56: Incident is already closed
+ERROR 1644 (45000) at line 57: Only analysts or admins can own incidents

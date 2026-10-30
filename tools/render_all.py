@@ -13,7 +13,7 @@ def load(n):
 # groups of block indexes per image; default = everything in one image
 SPLIT = {
   '000_reset': None, '031_dml_seed_data': None,       # not shown
-  '151_trg_ioc_rules': [[0], [1], [2]],                 # drop SHOW TRIGGERS (very wide)
+  '151_trg_ioc_rules': [[0], [1], [2], [3]],            # drop SHOW TRIGGERS (very wide)
 }
 for n in names:
     blocks = load(n)

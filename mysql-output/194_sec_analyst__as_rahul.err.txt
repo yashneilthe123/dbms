@@ -1,3 +1,7 @@
 ERROR 1369 (HY000) at line 8: CHECK OPTION failed 'sentinelx.v_my_incidents'
 ERROR 1142 (42000) at line 9: SELECT command denied to user 'rahul.mehta'@'localhost' for table 'incident'
-ERROR 1142 (42000) at line 10: DROP command denied to user 'rahul.mehta'@'localhost' for table 'asset'
+ERROR 1142 (42000) at line 10: SELECT command denied to user 'rahul.mehta'@'localhost' for table 'attack_event'
+ERROR 1142 (42000) at line 11: DROP command denied to user 'rahul.mehta'@'localhost' for table 'asset'
+ERROR 1644 (45000) at line 15: Analysts can only claim unassigned incidents for themselves
+ERROR 1644 (45000) at line 16: Analysts can only claim unassigned incidents for themselves
+ERROR 1142 (42000) at line 21: INSERT command denied to user 'rahul.mehta'@'localhost' for table 'ioc'

@@ -7,6 +7,6 @@ CREATE TABLE analyst (
 )
 --------------
 
-Query OK, 0 rows affected (0.07 sec)
+Query OK, 0 rows affected (0.03 sec)
 
 Bye

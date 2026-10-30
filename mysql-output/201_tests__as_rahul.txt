@@ -1,0 +1,225 @@
+--------------
+SET @tests_pass = 0, @tests_fail = 0
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S01', 'analyst cannot read a base table',
+  "DO (SELECT COUNT(*) FROM attack_event)", 1142)
+--------------
+
++------+----------------------------------+----------+--------+--------+
+| test | checks                           | expected | actual | result |
++------+----------------------------------+----------+--------+--------+
+| S01  | analyst cannot read a base table | 1142     | 1142   | PASS   |
++------+----------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S02', 'analyst can read through the view',
+  "DO (SELECT COUNT(*) FROM v_attack_details)", 0)
+--------------
+
++------+-----------------------------------+----------+--------+--------+
+| test | checks                            | expected | actual | result |
++------+-----------------------------------+----------+--------+--------+
+| S02  | analyst can read through the view | 0        | 0      | PASS   |
++------+-----------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S03', 'analyst cannot run DDL',
+  "DROP TABLE asset", 1142)
+--------------
+
++------+------------------------+----------+--------+--------+
+| test | checks                 | expected | actual | result |
++------+------------------------+----------+--------+--------+
+| S03  | analyst cannot run DDL | 1142     | 1142   | PASS   |
++------+------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_check('S04', 'v_my_incidents shows only his own rows', '0',
+  (SELECT COUNT(*) FROM v_my_incidents WHERE assigned_to <> 2))
+--------------
+
++------+----------------------------------------+----------+--------+--------+
+| test | checks                                 | expected | actual | result |
++------+----------------------------------------+----------+--------+--------+
+| S04  | v_my_incidents shows only his own rows | 0        | 0      | PASS   |
++------+----------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S05', 'WITH CHECK OPTION blocks handing an incident over',
+  "UPDATE v_my_incidents SET assigned_to = 3 WHERE incident_id = 7", 1369)
+--------------
+
++------+---------------------------------------------------+----------+--------+--------+
+| test | checks                                            | expected | actual | result |
++------+---------------------------------------------------+----------+--------+--------+
+| S05  | WITH CHECK OPTION blocks handing an incident over | 1369     | 1369   | PASS   |
++------+---------------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S06', 'procedure blocks giving his incident away',
+  "CALL sp_assign_incident(7, 3)", 1644)
+--------------
+
++------+-------------------------------------------+----------+--------+--------+
+| test | checks                                    | expected | actual | result |
++------+-------------------------------------------+----------+--------+--------+
+| S06  | procedure blocks giving his incident away | 1644     | 1644   | PASS   |
++------+-------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S07', "procedure blocks taking a colleague's incident",
+  "CALL sp_assign_incident(6, 2)", 1644)
+--------------
+
++------+------------------------------------------------+----------+--------+--------+
+| test | checks                                         | expected | actual | result |
++------+------------------------------------------------+----------+--------+--------+
+| S07  | procedure blocks taking a colleague's incident | 1644     | 1644   | PASS   |
++------+------------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S08', 'procedure lets him claim an unassigned incident',
+  "CALL sp_assign_incident(9, 2)", 0)
+--------------
+
++-------------+---------------+-------------+
+| incident_id | status        | assigned_to |
++-------------+---------------+-------------+
+|           9 | INVESTIGATING |           2 |
++-------------+---------------+-------------+
+1 row in set (0.00 sec)
+
++------+-------------------------------------------------+----------+--------+--------+
+| test | checks                                          | expected | actual | result |
++------+-------------------------------------------------+----------+--------+--------+
+| S08  | procedure lets him claim an unassigned incident | 0        | 0      | PASS   |
++------+-------------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S09', 'analyst cannot write the ioc table directly',
+  "INSERT INTO ioc (ioc_type, ioc_value, valid_from) VALUES ('ip', '192.0.2.200', '2026-10-01')", 1142)
+--------------
+
++------+---------------------------------------------+----------+--------+--------+
+| test | checks                                      | expected | actual | result |
++------+---------------------------------------------+----------+--------+--------+
+| S09  | analyst cannot write the ioc table directly | 1142     | 1142   | PASS   |
++------+---------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_expect_error('S10', 'analyst reports an IOC through the procedure',
+  "CALL sp_report_ioc('ip', '192.0.2.200', '2026-10-01', NULL, NULL)", 0)
+--------------
+
++----------------+----------+-------------+---------------------+---------------------+
+| ioc_version_id | ioc_type | ioc_value   | valid_from          | recorded_from       |
++----------------+----------+-------------+---------------------+---------------------+
+|             17 | ip       | 192.0.2.200 | 2026-10-01 00:00:00 | 2026-10-29 22:31:26 |
++----------------+----------+-------------+---------------------+---------------------+
+1 row in set (0.01 sec)
+
++------+----------------------------------------------+----------+--------+--------+
+| test | checks                                       | expected | actual | result |
++------+----------------------------------------------+----------+--------+--------+
+| S10  | analyst reports an IOC through the procedure | 0        | 0      | PASS   |
++------+----------------------------------------------+----------+--------+--------+
+1 row in set (0.01 sec)
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+CALL sp_expect_error('S11', 'analyst cannot read the audit trail',
+  "DO (SELECT COUNT(*) FROM incident_audit)", 1142)
+--------------
+
++------+-------------------------------------+----------+--------+--------+
+| test | checks                              | expected | actual | result |
++------+-------------------------------------+----------+--------+--------+
+| S11  | analyst cannot read the audit trail | 1142     | 1142   | PASS   |
++------+-------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SET timestamp = UNIX_TIMESTAMP('2026-01-01 00:00:00')
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_report_ioc('ip', '192.0.2.201', '2026-10-01', NULL, NULL)
+--------------
+
++----------------+----------+-------------+---------------------+---------------------+
+| ioc_version_id | ioc_type | ioc_value   | valid_from          | recorded_from       |
++----------------+----------+-------------+---------------------+---------------------+
+|             18 | ip       | 192.0.2.201 | 2026-10-01 00:00:00 | 2026-10-29 22:31:26 |
++----------------+----------+-------------+---------------------+---------------------+
+1 row in set (0.01 sec)
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+SET timestamp = DEFAULT
+--------------
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+CALL sp_check('S12', 'SET timestamp cannot backdate a reported IOC', '0',
+  (SELECT COUNT(*) FROM v_ioc WHERE ioc_value = '192.0.2.201' AND recorded_from < '2026-02-01'))
+--------------
+
++------+----------------------------------------------+----------+--------+--------+
+| test | checks                                       | expected | actual | result |
++------+----------------------------------------------+----------+--------+--------+
+| S12  | SET timestamp cannot backdate a reported IOC | 0        | 0      | PASS   |
++------+----------------------------------------------+----------+--------+--------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+--------------
+SELECT @tests_pass AS passed, @tests_fail AS failed
+--------------
+
++--------+--------+
+| passed | failed |
++--------+--------+
+|     12 |      0 |
++--------+--------+
+1 row in set (0.00 sec)
+
+Bye

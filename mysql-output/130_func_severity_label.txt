@@ -10,7 +10,7 @@ BEGIN
 END
 --------------
 
-Query OK, 0 rows affected (0.03 sec)
+Query OK, 0 rows affected (0.01 sec)
 
 --------------
 SELECT cve_id, cvss, fn_severity_label(cvss) AS label
